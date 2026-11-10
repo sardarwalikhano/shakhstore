@@ -1,0 +1,13 @@
+{
+  "id": "/",
+  "name": "SHAKH STORE",
+  "short_name": "SHAKH",
+  "description": "شاخ ستۆر - پلاتفۆرمی کڕین و گەیاندن",
+  "lang": "ckb",
+  "dir": "rtl",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f6f8fc",
+  "theme_color": "#f28c28",
+  "icons": []
+}
