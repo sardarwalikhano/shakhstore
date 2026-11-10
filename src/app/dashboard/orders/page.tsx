@@ -5,7 +5,7 @@ import { RefreshCw, ClipboardList } from "lucide-react";
 
 type Item = { id: string; product_name: string; unit_price_iqd: number; quantity: number; line_total_iqd: number };
 type Order = { id: string; order_number: string; status: string; subtotal_iqd: number; delivery_fee_iqd: number; total_iqd: number; delivery_address: string; customer_note: string | null; created_at: string; order_items: Item[] };
-const labels: Record<string,string> = { pending:"چاوەڕوانی دوکان", confirmed:"پەسەندکراو", preparing:"ئامادەکردن", ready:"ئامادەیە", out_for_delivery:"لە ڕێگای گەیاندندایە", delivered:"گەیشتووە", cancelled:"هەڵوەشێنراوەتەوە" };
+const labels: Record<string,string> = { pending:"چاوەڕوانی دوکان", confirmed:"پەسەندکراو", preparing:"ئامادەکردن", ready:"ئامادەیە", assigned:"کاپتن دیاریکراوە", out_for_delivery:"لە ڕێگای گەیاندندایە", delivered:"گەیشتووە", cancelled:"هەڵوەشێنراوەتەوە" };
 const money = (n:number) => new Intl.NumberFormat("en-US").format(Number(n)) + " د.ع";
 
 export default function OrdersPage() {
