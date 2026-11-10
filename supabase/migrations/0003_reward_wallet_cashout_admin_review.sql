@@ -10,6 +10,13 @@ drop function if exists public.settle_cash_referral_reward(uuid, uuid, bigint, t
 
 -- Keep one platform account and add one external payout account for balanced ledger entries.
 alter table public.wallet_accounts
+  drop constraint if exists wallet_accounts_owner_type_check;
+
+alter table public.wallet_accounts
+  add constraint wallet_accounts_owner_type_check
+  check (owner_type in ('user', 'platform', 'external'));
+
+alter table public.wallet_accounts
   drop constraint if exists wallet_owner_shape;
 
 alter table public.wallet_accounts
