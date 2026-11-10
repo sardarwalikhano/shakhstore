@@ -99,8 +99,8 @@ begin
   if v_user_id is null then
     raise exception 'Authentication required';
   end if;
-  if p_amount_iqd is null or p_amount_iqd <= 0 then
-    raise exception 'Cashout amount must be positive';
+  if p_amount_iqd is null or p_amount_iqd < 4 then
+    raise exception 'Cashout amount must be at least 4 IQD';
   end if;
 
   select id, balance_minor
