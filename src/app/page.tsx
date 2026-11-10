@@ -1,4 +1,6 @@
-import { ArrowLeft, Bike, ShoppingBasket, Store, Utensils, Beef, ShieldCheck } from "lucide-react";
+import { cookies } from "next/headers";
+import { createServerClient } from "@supabase/ssr";
+import { ArrowLeft, Bike, ShoppingBasket, Store, Utensils, Beef, ShieldCheck, UserCircle } from "lucide-react";
 
 const departments = [
   { title: "چێشتخانە", description: "داواکاری خواردن لە چێشتخانەکان", icon: Utensils },
@@ -7,7 +9,19 @@ const departments = [
   { title: "گۆشت", description: "گۆشت و بەرهەمە پەیوەندیدارەکان", icon: Beef },
 ];
 
-export default function HomePage() {
+export default async function HomePage() {
+  let signedIn = false;
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (url && anonKey) {
+    const jar = await cookies();
+    const supabase = createServerClient(url, anonKey, { cookies: {
+      getAll: () => jar.getAll(),
+      setAll: (values) => { try { values.forEach(({ name, value, options }) => jar.set(name, value, options)); } catch {} },
+    }});
+    const { data: { user } } = await supabase.auth.getUser();
+    signedIn = Boolean(user);
+  }
   return (
     <main className="min-h-screen pb-16">
       <header className="border-b border-slate-200 bg-white">
@@ -19,9 +33,15 @@ export default function HomePage() {
               <span className="block text-xs text-slate-500">شاخ ستۆر</span>
             </span>
           </a>
-          <a href="/login" className="inline-flex items-center gap-2 rounded-xl bg-[#2457a6] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#1c478b]">
-            چوونەژوورەوە <ArrowLeft size={16} />
-          </a>
+          {signedIn ? (
+            <a href="/profile" className="inline-flex items-center gap-2 rounded-xl bg-[#2457a6] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#1c478b">
+              <UserCircle size={17} /> پرۆفایل
+            </a>
+          ) : (
+            <a href="/login" className="inline-flex items-center gap-2 rounded-xl bg-[#2457a6] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#1c478b]">
+              چوونەژوورەوە <ArrowLeft size={16} />
+            </a>
+          )}
         </div>
       </header>
 
