@@ -22,11 +22,26 @@ export async function GET(){
   const c=await context();if("response" in c)return c.response;
   if(c.role==="customer"){
    const {data,error}=await c.db.from("products")
-    .select("id,store_id,name,description,category,price_iqd,image_url,stock_quantity,stores!inner(id,name,slug,store_type,status)")
+    .select("id,store_id,owner_id,name,description,category,price_iqd,image_url,stock_quantity,stores(id,name,slug,store_type,status)")
     .eq("is_active",true).eq("stores.status","approved")
     .gt("stock_quantity",0).order("created_at",{ascending:false}).limit(200);
    if(error)throw error;
-   return NextResponse.json({products:data??[]});
+   // Legacy Super Admin posts created before store selection have a null store_id.
+   // Keep those platform-owned items visible as SHAKH STORE catalog entries.
+   const {data:authUsers,error:usersError}=await c.db.auth.admin.listUsers({page:1,perPage:200});
+   if(usersError)throw usersError;
+   const adminIds=authUsers.users.filter(u=>["super_admin","admin"].includes(String(u.app_metadata?.role??""))).map(u=>u.id);
+   let legacy:any[]=[];
+   if(adminIds.length){
+    const {data:orphaned,error:orphanError}=await c.db.from("products")
+     .select("id,store_id,owner_id,name,description,category,price_iqd,image_url,stock_quantity")
+     .is("store_id",null).in("owner_id",adminIds).eq("is_active",true).gt("stock_quantity",0)
+     .order("created_at",{ascending:false}).limit(200);
+    if(orphanError)throw orphanError;
+    legacy=(orphaned??[]).map(p=>({...p,stores:null}));
+   }
+   const products=[...(data??[]),...legacy].sort((x,y)=>Number(new Date(y.created_at??0))-Number(new Date(x.created_at??0))).slice(0,200);
+   return NextResponse.json({products});
   }
   let q=c.db.from("products").select("id,store_id,owner_id,name,description,category,price_iqd,image_url,sku,stock_quantity,is_active,created_at,updated_at").order("created_at",{ascending:false}).limit(200);
   if(MERCHANT_ROLES.includes(c.role as typeof MERCHANT_ROLES[number]))q=q.eq("owner_id",c.user.id);
