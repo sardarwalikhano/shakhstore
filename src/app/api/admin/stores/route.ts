@@ -31,16 +31,16 @@ export async function PATCH(request:Request){
     const v=body as Record<string,unknown>;
     if(typeof v.storeId!=="string"||!/^[0-9a-f-]{36}$/i.test(v.storeId))return NextResponse.json({error:"Invalid store ID"},{status:400});
     if(!["approved","rejected","suspended"].includes(String(v.status)))return NextResponse.json({error:"Invalid status"},{status:400});
-    const {data:store,error:findError}=await ctx.db.from("stores").select("id,status").eq("id",v.storeId).maybeSingle();
+    const {data:store,error:findError}=await ctx.db.from("stores").select("id,status,owner_id,store_type").eq("id",v.storeId).maybeSingle();
     if(findError)throw findError;if(!store)return NextResponse.json({error:"Store not found"},{status:404});
     if(store.status!=="pending"&&v.status!=="suspended")return NextResponse.json({error:"Only pending applications can be approved or rejected"},{status:409});
     const {data,error}=await ctx.db.from("stores").update({status:v.status,admin_note:typeof v.note==="string"?v.note.trim().slice(0,1000):null,reviewed_by:ctx.user.id,reviewed_at:new Date().toISOString()}).eq("id",v.storeId).select("id,status,admin_note,reviewed_at").single();
     if(error)throw error;
     if(v.status==="approved"){
-      const {data:owner,error:ownerError}=await ctx.db.auth.admin.getUserById((await ctx.db.from("stores").select("owner_id").eq("id",v.storeId).single()).data!.owner_id);
+      const {data:owner,error:ownerError}=await ctx.db.auth.admin.getUserById(store.owner_id);
       if(ownerError)throw ownerError;
       if(owner.user){
-        const {error:updateError}=await ctx.db.auth.admin.updateUserById(owner.user.id,{app_metadata:{...(owner.user.app_metadata??{}),role:store.status==="pending"?"restaurant":owner.user.app_metadata?.role}});
+        const {error:updateError}=await ctx.db.auth.admin.updateUserById(owner.user.id,{app_metadata:{...(owner.user.app_metadata??{}),role:store.store_type}});
         if(updateError)throw updateError;
       }
     }
