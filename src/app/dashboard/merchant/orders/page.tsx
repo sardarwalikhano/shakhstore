@@ -5,7 +5,7 @@ import { RefreshCw, ClipboardList, CheckCircle2, ChefHat, PackageCheck } from "l
 
 type Item={id:string;product_name:string;unit_price_iqd:number;quantity:number;line_total_iqd:number};
 type Order={id:string;order_number:string;store_id:string;status:string;subtotal_iqd:number;delivery_fee_iqd:number;total_iqd:number;customer_name:string|null;customer_phone:string|null;delivery_address:string;customer_note:string|null;merchant_note:string|null;created_at:string;order_items:Item[]};
-const labels:Record<string,string>={pending:"نوێ / چاوەڕوانی",confirmed:"پەسەندکراو",preparing:"لە ئامادەکردندایە",ready:"ئامادەیە",out_for_delivery:"لە ڕێگای گەیاندندایە",delivered:"گەیشتووە",cancelled:"هەڵوەشێنراوەتەوە"};
+const labels:Record<string,string>={pending:"نوێ / چاوەڕوانی",confirmed:"پەسەندکراو",preparing:"لە ئامادەکردندایە",ready:"ئامادەیە",assigned:"کاپتن دیاریکراوە",out_for_delivery:"لە ڕێگای گەیاندندایە",delivered:"گەیشتووە",cancelled:"هەڵوەشێنراوەتەوە"};
 const actions:Record<string,{next:string;label:string;icon:typeof CheckCircle2}>={
  pending:{next:"confirmed",label:"پەسەندکردنی داواکاری",icon:CheckCircle2},
  confirmed:{next:"preparing",label:"دەستپێکردنی ئامادەکردن",icon:ChefHat},
