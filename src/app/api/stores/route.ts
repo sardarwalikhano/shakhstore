@@ -21,7 +21,7 @@ async function context() {
 export async function GET(){
   try{
     const ctx=await context();if("error" in ctx)return ctx.error;
-    const {data,error}=await ctx.db.from("stores").select("id,owner_id,name,slug,store_type,description,phone,address,status,admin_note,created_at,updated_at").eq("owner_id",ctx.user.id).maybeSingle();
+    const {data,error}=await ctx.db.from("stores").select("id,owner_id,name,slug,store_type,description,phone,address,status,admin_note,created_at,updated_at").eq("owner_id",ctx.user.id).order("created_at",{ascending:false}).limit(1).maybeSingle();
     if(error)throw error;
     return NextResponse.json({store:data});
   }catch(e){console.error("Store profile load failed",e);return NextResponse.json({error:"Unable to load store profile"},{status:500});}
@@ -41,7 +41,7 @@ export async function POST(request:Request){
     if(name.length<2||name.length>120)return NextResponse.json({error:"ناوی دوکان دەبێت لە ٢ تا ١٢٠ پیت بێت."},{status:400});
     if(!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)||slug.length>80)return NextResponse.json({error:"ناوی لینک (slug) دروست نییە."},{status:400});
     if(storeType!==role)return NextResponse.json({error:"جۆری دوکان دەبێت لەگەڵ ڕۆڵی هەژمارەکەت یەک بگرێتەوە."},{status:403});
-    const {data:existing,error:existingError}=await ctx.db.from("stores").select("id,status").eq("owner_id",ctx.user.id).maybeSingle();
+    const {data:existing,error:existingError}=await ctx.db.from("stores").select("id,status").eq("owner_id",ctx.user.id).order("created_at",{ascending:false}).limit(1).maybeSingle();
     if(existingError)throw existingError;
     if(existing&&existing.status!=="rejected")return NextResponse.json({error:"پێشتر داواکاری یان دوکانێکت هەیە."},{status:409});
     const record={
