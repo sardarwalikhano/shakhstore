@@ -34,6 +34,7 @@ export default async function DashboardPage() {
     {title:"پرۆفایل",description:"نوێکردنەوەی ناو، ژمارەی مۆبایل و زانیاری هەژمار",href:"/profile",icon:UserCircle},
     {title:"ئاگادارکردنەوەکان",description:"بینین و خوێندنەوەی ئاگادارکردنەوەکان",href:"/notifications",icon:Bell},
     {title:"داواکارییەکان",description:"بینینی مێژوو و دۆخی داواکارییەکان",href:"/dashboard/orders",icon:ShoppingBag},
+    ...(role==="customer"?[{title:"بازاڕ و کڕین",description:"گەڕان لە بەرهەمە بەردەستەکانی دوکانە پەسەندکراوەکان و زیادکردن بۆ سەبەتە",href:"/market",icon:Store}]:[]),
     ...(admin?[{title:"بەڕێوەبردنی Cashout",description:"پشکنین و بڕیاردان لەسەر داواکارییەکانی کشانەوە",href:"/dashboard/admin/cashouts",icon:Wallet},{title:"پشکنینی دوکانەکان",description:"پەسەندکردن و بەڕێوەبردنی داواکارییەکانی فرۆشیاران",href:"/dashboard/admin/stores",icon:Store},{title:"بەرهەمەکان",description:"بەڕێوەبردنی کاتەلۆگی بەرهەمەکانی SHAKH STORE",href:"/dashboard/products",icon:Package}]:[]),
     ...(role==="super_admin"?[{title:"بەکارهێنەران و ڕۆڵەکان",description:"گەڕان، پشکنین و دیاریکردنی ڕۆڵی هەژمارەکان",href:"/dashboard/admin/users",icon:ShieldCheck}]:[]),
     ...(merchant?[{title:"دوکانەکەم",description:"دروستکردن و بەڕێوەبردنی زانیاری دوکان و داواکاری پەسەندکردن",href:"/dashboard/store",icon:Store},{title:"بەرهەمەکانم",description:"زیادکردنی بەرهەم، نرخ، وێنە و کۆگا",href:"/dashboard/products",icon:Package}]:[]),
