@@ -65,7 +65,7 @@ export default function MarketPage() {
     <div className="mx-auto max-w-7xl">
       <header className="mb-7 flex flex-wrap items-center justify-between gap-3">
         <div><p className="font-black text-orange-600">SHAKH STORE / MARKET</p><h1 className="mt-2 text-3xl font-black text-slate-900">بازاڕ</h1><p className="mt-2 text-sm text-slate-500">بەرهەمە بەردەستەکانی دوکانە پەسەندکراوەکان</p></div>
-        <div className="flex gap-2"><a href="/dashboard" className="rounded-xl border bg-white px-4 py-3 text-sm font-bold">داشبۆرد</a><button onClick={()=>void load()} className="flex items-center gap-2 rounded-xl border bg-white px-4 py-3 text-sm font-bold"><RefreshCw size={16}/> نوێکردنەوە</button></div>
+        <div className="flex gap-2"><a href="/profile" className="rounded-xl border bg-white px-4 py-3 text-sm font-bold">پرۆفایل</a><a href="/dashboard" className="rounded-xl border bg-white px-4 py-3 text-sm font-bold">داشبۆرد</a><button onClick={()=>void load()} className="flex items-center gap-2 rounded-xl border bg-white px-4 py-3 text-sm font-bold"><RefreshCw size={16}/> نوێکردنەوە</button></div>
       </header>
       {error&&<p role="alert" className="mb-4 rounded-xl bg-red-50 p-4 text-sm text-red-700">{error}</p>}
       {notice&&<p role="status" className="mb-4 rounded-xl bg-green-50 p-4 text-sm text-green-800">{notice}</p>}
