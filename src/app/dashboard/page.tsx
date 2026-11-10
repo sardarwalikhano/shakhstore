@@ -37,7 +37,7 @@ export default async function DashboardPage() {
     ...(role==="customer"?[{title:"بازاڕ و کڕین",description:"گەڕان لە بەرهەمە بەردەستەکانی دوکانە پەسەندکراوەکان و زیادکردن بۆ سەبەتە",href:"/market",icon:Store}]:[]),
     ...(admin?[{title:"بەڕێوەبردنی Cashout",description:"پشکنین و بڕیاردان لەسەر داواکارییەکانی کشانەوە",href:"/dashboard/admin/cashouts",icon:Wallet},{title:"پشکنینی دوکانەکان",description:"پەسەندکردن و بەڕێوەبردنی داواکارییەکانی فرۆشیاران",href:"/dashboard/admin/stores",icon:Store},{title:"بەرهەمەکان",description:"بەڕێوەبردنی کاتەلۆگی بەرهەمەکانی SHAKH STORE",href:"/dashboard/products",icon:Package}]:[]),
     ...(role==="super_admin"?[{title:"بەکارهێنەران و ڕۆڵەکان",description:"گەڕان، پشکنین و دیاریکردنی ڕۆڵی هەژمارەکان",href:"/dashboard/admin/users",icon:ShieldCheck}]:[]),
-    ...(merchant?[{title:"دوکانەکەم",description:"دروستکردن و بەڕێوەبردنی زانیاری دوکان و داواکاری پەسەندکردن",href:"/dashboard/store",icon:Store},{title:"بەرهەمەکانم",description:"زیادکردنی بەرهەم، نرخ، وێنە و کۆگا",href:"/dashboard/products",icon:Package}]:[]),
+    ...(merchant?[{title:"داواکارییەکانی دوکان",description:"بینین، پەسەندکردن و ئامادەکردنی داواکارییەکانی کڕیاران",href:"/dashboard/merchant/orders",icon:ShoppingBag},{title:"دوکانەکەم",description:"دروستکردن و بەڕێوەبردنی زانیاری دوکان و داواکاری پەسەندکردن",href:"/dashboard/store",icon:Store},{title:"بەرهەمەکانم",description:"زیادکردنی بەرهەم، نرخ، وێنە و کۆگا",href:"/dashboard/products",icon:Package}]:[]),
   ];
   const modules=admin
     ? ["بەڕێوەبردنی بەکارهێنەران و ڕۆڵەکان","چاودێری فرۆشیاران و دوکانەکان","داواکاری و گەیاندن","ڕاپۆرت و ڕێکخستنی کۆمیشن"]
