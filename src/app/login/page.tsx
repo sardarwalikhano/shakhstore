@@ -13,22 +13,41 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  async function googleLogin() {\n    setError("");\n    setLoading(true);\n    try {\n      const url = process.env.NEXT_PUBLIC_SUPABASE_URL;\n      const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;\n      if (!url || !anonKey) throw new Error("پەیوەندی Supabase ئامادە نییە.");\n      const supabase = createBrowserClient(url, anonKey);\n      const redirectTo = new URL("/auth/callback?next=/dashboard", window.location.origin).toString();\n      const { error } = await supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo, queryParams: { prompt: "select_account" } } });\n      if (error) throw error;\n    } catch (err) { setError(err instanceof Error ? err.message : "چوونەژوورەوە بە Google سەرکەوتوو نەبوو."); setLoading(false); }\n  }\n\n  async function submit(event: FormEvent<HTMLFormElement>) {
+  function getSupabase() {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (!url || !anonKey) throw new Error("پەیوەندی Supabase ئامادە نییە.");
+    return createBrowserClient(url, anonKey);
+  }
+
+  async function googleLogin() {
+    setError("");
+    setLoading(true);
+    try {
+      const supabase = getSupabase();
+      const redirectTo = new URL("/auth/callback?next=/dashboard", window.location.origin).toString();
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo, queryParams: { prompt: "select_account" } },
+      });
+      if (error) throw error;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "چوونەژوورەوە بە Google سەرکەوتوو نەبوو.");
+      setLoading(false);
+    }
+  }
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
     setLoading(true);
     try {
-      const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-      const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-      if (!url || !anonKey) throw new Error("پەیوەندی بە داتابەیس ئامادە نییە. تکایە پەیوەندی بە بەڕێوەبەرەوە بکە.");
-
-      const supabase = createBrowserClient(url, anonKey);
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
+      const supabase = getSupabase();
+      const { error } = await supabase.auth.signInWithPassword({
+        email: email.trim().toLowerCase(),
         password,
       });
-      if (signInError) throw signInError;
-
+      if (error) throw error;
       router.replace("/dashboard");
       router.refresh();
     } catch (err) {
@@ -44,7 +63,7 @@ export default function LoginPage() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-10" dir="rtl">
       <section className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-7 shadow-xl shadow-slate-200/60 sm:p-9">
-        <div className="mx-auto grid size-14 place-items-center rounded-2xl bg-orange-500 text-2xl font-black text-white"><Store size={27} /></div>
+        <div className="mx-auto grid size-14 place-items-center rounded-2xl bg-orange-500 text-white"><Store size={27} /></div>
         <div className="mt-5 text-center">
           <p className="text-sm font-black tracking-wider text-orange-600">SHAKH STORE</p>
           <h1 className="mt-2 text-2xl font-black text-slate-900">چوونەژوورەوە</h1>
@@ -56,7 +75,8 @@ export default function LoginPage() {
           چوونەژوورەوە بە Google
         </button>
         <div className="my-6 flex items-center gap-3"><span className="h-px flex-1 bg-slate-200"/><span className="text-xs text-slate-400">یان بە ئیمەیڵ</span><span className="h-px flex-1 bg-slate-200"/></div>
-\n        <form onSubmit={submit} className="space-y-5">
+
+        <form onSubmit={submit} className="space-y-5">
           <div>
             <label htmlFor="email" className="mb-2 block text-sm font-bold text-slate-700">ئیمەیڵ</label>
             <div className="flex items-center gap-3 rounded-xl border border-slate-200 px-3 focus-within:border-orange-400">
@@ -72,15 +92,14 @@ export default function LoginPage() {
               <button type="button" onClick={() => setShowPassword((v) => !v)} aria-label={showPassword ? "شاردنەوەی وشەی نهێنی" : "پیشاندانی وشەی نهێنی"} className="p-1 text-slate-400">{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button>
             </div>
           </div>
-
           {error && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm leading-6 text-red-700">{error}</p>}
-
           <button type="submit" disabled={loading} className="w-full rounded-xl bg-orange-500 px-4 py-3.5 font-black text-white transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-60">
             {loading ? "چوونەژوورەوە..." : "چوونەژوورەوە"}
           </button>
         </form>
-
-        <a href="/forgot-password" className="mt-4 block text-center text-sm font-bold text-orange-600 hover:text-orange-700">وشەی نهێنیت لەبیرکردووە؟</a>\n        <a href="/" className="mt-5 block text-center text-sm font-bold text-slate-500 hover:text-orange-600">گەڕانەوە بۆ پەڕەی سەرەکی</a>
+        <a href="/forgot-password" className="mt-4 block text-center text-sm font-bold text-orange-600 hover:text-orange-700">وشەی نهێنیت لەبیرکردووە؟</a>
+        <p className="mt-4 text-center text-sm text-slate-600">هەژمارت نییە؟ <a href="/signup" className="font-black text-orange-600">هەژمار دروست بکە</a></p>
+        <a href="/" className="mt-5 block text-center text-sm font-bold text-slate-500 hover:text-orange-600">گەڕانەوە بۆ پەڕەی سەرەکی</a>
       </section>
     </main>
   );
