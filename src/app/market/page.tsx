@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ShoppingCart, Store, Minus, Plus, RefreshCw } from "lucide-react";
 
 type Product = {
@@ -20,7 +20,7 @@ export default function MarketPage() {
   const [error,setError] = useState("");
   const [notice,setNotice] = useState("");
 
-  async function load() {
+  const load = useCallback(async () => {
     setLoading(true); setError("");
     try {
       const res = await fetch("/api/products",{cache:"no-store"});
@@ -29,8 +29,8 @@ export default function MarketPage() {
       setProducts(data.products ?? []);
     } catch(e) { setError(e instanceof Error ? e.message : "هەڵەیەک ڕوویدا."); }
     finally { setLoading(false); }
-  }
-  useEffect(()=>{ void load(); },[]);
+  },[]);
+  useEffect(()=>{ void load(); },[load]);
 
   const selected = products.filter(p => (cart[p.id] ?? 0) > 0);
   const storeIds = [...new Set(selected.map(p=>p.store_id))];
