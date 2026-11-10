@@ -20,7 +20,7 @@ async function context() {
   });
   const { data: { user }, error } = await auth.auth.getUser();
   if (error || !user) return { response: NextResponse.json({ error: "Authentication required" }, { status: 401 }) };
-  return { user, db: createClient(url, service, { auth: { autoRefreshToken: false, persistSession: false } }) };
+  return { user, role: String(user.app_metadata?.role ?? "customer"), db: createClient(url, service, { auth: { autoRefreshToken: false, persistSession: false } }) };
 }
 
 export async function GET() {
@@ -42,19 +42,27 @@ export async function POST(request: Request) {
   try {
     const c = await context();
     if ("response" in c) return c.response;
+    if (c.role !== "customer") return NextResponse.json({ error: "Customer account required" }, { status: 403 });
     const raw: unknown = await request.json();
     if (!raw || typeof raw !== "object") return NextResponse.json({ error: "Invalid request" }, { status: 400 });
     const v = raw as Record<string, unknown>;
     if (!Array.isArray(v.items) || v.items.length < 1 || v.items.length > 50) {
       return NextResponse.json({ error: "داواکاری دەبێت ١ تا ٥٠ بەرهەمی تێدا بێت." }, { status: 400 });
     }
-    const items = v.items.map((item) => {
+    const parsedItems = v.items.map((item) => {
       if (!item || typeof item !== "object") throw new Error("Invalid order item");
       const row = item as Record<string, unknown>;
       return { product_id: String(row.product_id ?? ""), quantity: Number(row.quantity) };
     });
-    if (items.some((item) => !Number.isSafeInteger(item.quantity) || item.quantity < 1 || item.quantity > 10000)) {
-      return NextResponse.json({ error: "ژمارەی بەرهەم دروست نییە." }, { status: 400 });
+    if (parsedItems.some((item) => !/^[0-9a-f-]{36}$/i.test(item.product_id) || !Number.isSafeInteger(item.quantity) || item.quantity < 1 || item.quantity > 10000)) {
+      return NextResponse.json({ error: "ژمارە یان ناسنامەی بەرهەم دروست نییە." }, { status: 400 });
+    }
+    // Collapse repeated product IDs so stock validation and decrement use the combined quantity.
+    const quantities = new Map<string, number>();
+    for (const item of parsedItems) quantities.set(item.product_id, (quantities.get(item.product_id) ?? 0) + item.quantity);
+    const items = Array.from(quantities, ([product_id, quantity]) => ({ product_id, quantity }));
+    if (items.some((item) => item.quantity > 10000)) {
+      return NextResponse.json({ error: "کۆی ژمارەی بەرهەمی دووبارەکراو زۆرە." }, { status: 400 });
     }
     const address = typeof v.delivery_address === "string" ? v.delivery_address.trim() : "";
     if (address.length < 5 || address.length > 1000) {
