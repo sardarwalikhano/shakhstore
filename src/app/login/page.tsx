@@ -75,7 +75,7 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <a href="/" className="mt-6 block text-center text-sm font-bold text-slate-500 hover:text-orange-600">گەڕانەوە بۆ پەڕەی سەرەکی</a>
+        <a href="/forgot-password" className="mt-4 block text-center text-sm font-bold text-orange-600 hover:text-orange-700">وشەی نهێنیت لەبیرکردووە؟</a>\n        <a href="/" className="mt-5 block text-center text-sm font-bold text-slate-500 hover:text-orange-600">گەڕانەوە بۆ پەڕەی سەرەکی</a>
       </section>
     </main>
   );
