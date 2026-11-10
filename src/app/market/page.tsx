@@ -6,7 +6,7 @@ import { ShoppingCart, Store, Minus, Plus, RefreshCw } from "lucide-react";
 type Product = {
   id: string; store_id: string; name: string; description: string | null;
   category: string; price_iqd: number; image_url: string | null; stock_quantity: number;
-  stores: { id: string; name: string; slug: string; store_type: string; status: string } | { id: string; name: string; slug: string; store_type: string; status: string }[];
+  stores: { id: string; name: string; slug: string; store_type: string; status: string } | { id: string; name: string; slug: string; store_type: string; status: string }[] | null;
 };
 const money = (n:number) => new Intl.NumberFormat("en-US").format(n) + " د.ع";
 const storeOf = (p:Product) => Array.isArray(p.stores) ? p.stores[0] : p.stores;
