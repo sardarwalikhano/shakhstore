@@ -20,9 +20,17 @@ function validImage(value:unknown){if(value==null||value==="")return null;if(typ
 export async function GET(){
  try{
   const c=await context();if("response" in c)return c.response;
+  if(c.role==="customer"){
+   const {data,error}=await c.db.from("products")
+    .select("id,store_id,name,description,category,price_iqd,image_url,stock_quantity,stores!inner(id,name,slug,store_type,status)")
+    .eq("is_active",true).eq("stores.status","approved")
+    .gt("stock_quantity",0).order("created_at",{ascending:false}).limit(200);
+   if(error)throw error;
+   return NextResponse.json({products:data??[]});
+  }
   let q=c.db.from("products").select("id,store_id,owner_id,name,description,category,price_iqd,image_url,sku,stock_quantity,is_active,created_at,updated_at").order("created_at",{ascending:false}).limit(200);
   if(MERCHANT_ROLES.includes(c.role as typeof MERCHANT_ROLES[number]))q=q.eq("owner_id",c.user.id);
-  else if(c.role!=="super_admin"&&c.role!=="admin")return NextResponse.json({error:"Merchant or admin account required"},{status:403});
+  else if(c.role!=="super_admin"&&c.role!=="admin")return NextResponse.json({error:"Access denied"},{status:403});
   const {data,error}=await q;if(error)throw error;
   return NextResponse.json({products:data??[]});
  }catch(e){console.error("Products GET failed",e);return NextResponse.json({error:"Unable to load products"},{status:500});}
