@@ -23,7 +23,7 @@ async function context() {
 async function ownedStoreIds(db:any,userId:string) {
   const {data,error}=await db.from("stores").select("id").eq("owner_id",userId);
   if(error) throw error;
-  return (data??[]).map(s=>s.id);
+  return (data??[]).map((s:{id:string})=>s.id);
 }
 
 export async function GET() {
