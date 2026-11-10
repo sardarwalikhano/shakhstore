@@ -32,7 +32,7 @@ export async function GET(){
   if(MERCHANT_ROLES.includes(c.role as typeof MERCHANT_ROLES[number]))q=q.eq("owner_id",c.user.id);
   else if(c.role!=="super_admin"&&c.role!=="admin")return NextResponse.json({error:"Access denied"},{status:403});
   const {data,error}=await q;if(error)throw error;
-  return NextResponse.json({products:data??[]});
+  return NextResponse.json({products:data??[],role:c.role});
  }catch(e){console.error("Products GET failed",e);return NextResponse.json({error:"Unable to load products"},{status:500});}
 }
 export async function POST(request:Request){
@@ -53,6 +53,10 @@ export async function POST(request:Request){
   if(isMerchant){
    const {data:store,error}=await c.db.from("stores").select("id").eq("owner_id",c.user.id).eq("status","approved").maybeSingle();
    if(error)throw error;if(!store)return NextResponse.json({error:"دوکانەکەت هێشتا پەسەند نەکراوە."},{status:403});storeId=store.id;
+  }else if(isAdmin){
+   if(typeof v.store_id!=="string"||!/^[0-9a-f-]{36}$/i.test(v.store_id))return NextResponse.json({error:"تکایە دوکانێکی پەسەندکراو هەڵبژێرە."},{status:400});
+   const {data:store,error}=await c.db.from("stores").select("id").eq("id",v.store_id).eq("status","approved").maybeSingle();
+   if(error)throw error;if(!store)return NextResponse.json({error:"دوکان نەدۆزرایەوە یان پەسەند نەکراوە."},{status:400});storeId=store.id;
   }else if(typeof v.store_id==="string"&&v.store_id){
    const {data:store,error}=await c.db.from("stores").select("id").eq("id",v.store_id).eq("status","approved").maybeSingle();
    if(error)throw error;if(!store)return NextResponse.json({error:"دوکان نەدۆزرایەوە یان پەسەند نەکراوە."},{status:400});storeId=store.id;
