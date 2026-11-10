@@ -22,7 +22,7 @@ export async function GET(){
   const c=await context();if("response" in c)return c.response;
   if(c.role==="customer"){
    const {data,error}=await c.db.from("products")
-    .select("id,store_id,owner_id,name,description,category,price_iqd,image_url,stock_quantity,stores(id,name,slug,store_type,status)")
+    .select("id,store_id,owner_id,name,description,category,price_iqd,image_url,stock_quantity,created_at,stores(id,name,slug,store_type,status)")
     .eq("is_active",true).eq("stores.status","approved")
     .gt("stock_quantity",0).order("created_at",{ascending:false}).limit(200);
    if(error)throw error;
@@ -34,7 +34,7 @@ export async function GET(){
    let legacy:any[]=[];
    if(adminIds.length){
     const {data:orphaned,error:orphanError}=await c.db.from("products")
-     .select("id,store_id,owner_id,name,description,category,price_iqd,image_url,stock_quantity")
+     .select("id,store_id,owner_id,name,description,category,price_iqd,image_url,stock_quantity,created_at")
      .is("store_id",null).in("owner_id",adminIds).eq("is_active",true).gt("stock_quantity",0)
      .order("created_at",{ascending:false}).limit(200);
     if(orphanError)throw orphanError;
