@@ -33,7 +33,7 @@ export default async function DashboardPage() {
   const cards=[
     {title:"پرۆفایل",description:"نوێکردنەوەی ناو، ژمارەی مۆبایل و زانیاری هەژمار",href:"/profile",icon:UserCircle},
     {title:"ئاگادارکردنەوەکان",description:"بینین و خوێندنەوەی ئاگادارکردنەوەکان",href:"/notifications",icon:Bell},
-    ...(admin?[{title:"بەڕێوەبردنی Cashout",description:"پشکنین و بڕیاردان لەسەر داواکارییەکانی کشانەوە",href:"/dashboard/admin/cashouts",icon:Wallet}]:[]),
+    ...(admin?[{title:"بەڕێوەبردنی Cashout",description:"پشکنین و بڕیاردان لەسەر داواکارییەکانی کشانەوە",href:"/dashboard/admin/cashouts",icon:Wallet}]:[]),\n    ...(role==="super_admin"?[{title:"بەکارهێنەران و ڕۆڵەکان",description:"گەڕان، پشکنین و دیاریکردنی ڕۆڵی هەژمارەکان",href:"/dashboard/admin/users",icon:ShieldCheck}]:[]),
   ];
   const modules=admin
     ? ["بەڕێوەبردنی بەکارهێنەران و ڕۆڵەکان","چاودێری فرۆشیاران و دوکانەکان","داواکاری و گەیاندن","ڕاپۆرت و ڕێکخستنی کۆمیشن"]
