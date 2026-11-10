@@ -42,7 +42,7 @@ export default function MerchantOrdersPage(){
    <div className="divide-y border-y">{(order.order_items??[]).map(item=><div key={item.id} className="flex justify-between gap-3 py-3 text-sm"><span>{item.product_name} × {item.quantity}</span><strong>{money(item.line_total_iqd)}</strong></div>)}</div>
    {order.customer_note&&<p className="mt-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">تێبینی کڕیار: {order.customer_note}</p>}
    <div className="mt-4 flex flex-wrap items-center justify-between gap-3"><div className="text-sm text-slate-600"><p>بەرهەمەکان: {money(order.subtotal_iqd)}</p><p>گەیاندن: {money(order.delivery_fee_iqd)}</p><p className="mt-1 text-base font-black text-orange-600">کۆی گشتی: {money(order.total_iqd)}</p></div>
-    {action&&<button disabled={busy===order.id} onClick={()=>void update(order,action.next)} className="inline-flex items-center gap-2 rounded-xl bg-orange-500 px-4 py-3 text-sm font-black text-white disabled:opacity-50">{ActionIcon&&<ActionIcon size={17}/ >}{busy===order.id?"تکایە چاوەڕێ بکە...":action.label}</button>}
+    {action&&<button disabled={busy===order.id} onClick={()=>void update(order,action.next)} className="inline-flex items-center gap-2 rounded-xl bg-orange-500 px-4 py-3 text-sm font-black text-white disabled:opacity-50">{ActionIcon&&<ActionIcon size={17}/>}{busy===order.id?"تکایە چاوەڕێ بکە...":action.label}</button>}
    </div>
   </article>})}</div>}
  </div></main>;
