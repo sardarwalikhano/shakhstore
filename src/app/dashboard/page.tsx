@@ -1,60 +1,87 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createServerClient } from "@supabase/ssr";
-import { Bell, ShieldCheck, Store, Wallet } from "lucide-react";
+import { Bell, Bike, ClipboardList, Package, ShieldCheck, ShoppingBag, Store, UserCircle, Wallet, Utensils } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
+const roleLabels: Record<string,string> = {
+  super_admin:"Super Admin", admin:"Admin", restaurant:"چێشتخانە",
+  supermarket:"سوپەرمارکێت", produce_vendor:"فرۆشیاری بەرهەم",
+  meat_seafood_vendor:"فرۆشیاری گۆشت و ماسی", captain:"کاپتن", customer:"کڕیار"
+};
+
 export default async function DashboardPage() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !anonKey) {
-    return <main className="grid min-h-screen place-items-center bg-slate-50 p-6" dir="rtl"><p className="rounded-xl border border-amber-200 bg-amber-50 p-5 text-amber-900">پەیوەندی Supabase لە سێرڤەر ڕێک نەخراوە.</p></main>;
-  }
+  const url=process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey=process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if(!url||!anonKey) return <main className="grid min-h-screen place-items-center bg-slate-50 p-6" dir="rtl"><p className="rounded-xl border border-amber-200 bg-amber-50 p-5 text-amber-900">پەیوەندی Supabase لە سێرڤەر ڕێک نەخراوە.</p></main>;
+  const cookieStore=await cookies();
+  const supabase=createServerClient(url,anonKey,{cookies:{
+    getAll:()=>cookieStore.getAll(),
+    setAll:(values)=>{try{values.forEach(({name,value,options})=>cookieStore.set(name,value,options));}catch{}}
+  }});
+  const {data:{user}}=await supabase.auth.getUser();
+  if(!user) redirect("/login");
 
-  const cookieStore = await cookies();
-  const supabase = createServerClient(url, anonKey, {
-    cookies: {
-      getAll: () => cookieStore.getAll(),
-      setAll: (values) => {
-        try { values.forEach(({ name, value, options }) => cookieStore.set(name, value, options)); } catch {}
-      },
-    },
-  });
+  const role=String(user.app_metadata?.role??"customer");
+  const displayName=String(user.user_metadata?.full_name??user.user_metadata?.name??user.email??"بەکارهێنەر");
+  const {data:wallet}=await supabase.from("wallet_accounts").select("balance_minor").eq("owner_type","user").eq("owner_id",user.id).eq("currency","IQD").maybeSingle();
+  const balance=Number(wallet?.balance_minor??0);
 
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const admin=role==="super_admin"||role==="admin";
+  const merchant=["restaurant","supermarket","produce_vendor","meat_seafood_vendor"].includes(role);
+  const cards=[
+    {title:"پرۆفایل",description:"نوێکردنەوەی ناو، ژمارەی مۆبایل و زانیاری هەژمار",href:"/profile",icon:UserCircle},
+    {title:"ئاگادارکردنەوەکان",description:"بینین و خوێندنەوەی ئاگادارکردنەوەکان",href:"/notifications",icon:Bell},
+    ...(admin?[{title:"بەڕێوەبردنی Cashout",description:"پشکنین و بڕیاردان لەسەر داواکارییەکانی کشانەوە",href:"/dashboard/admin/cashouts",icon:Wallet}]:[]),
+  ];
+  const modules=admin
+    ? ["بەڕێوەبردنی بەکارهێنەران و ڕۆڵەکان","چاودێری فرۆشیاران و دوکانەکان","داواکاری و گەیاندن","ڕاپۆرت و ڕێکخستنی کۆمیشن"]
+    : merchant
+    ? ["بەڕێوەبردنی دوکان و زانیاری فرۆشیار","بەرهەم، نرخ و وێنەکان","داواکارییە هاتووەکان","فرۆشتن و هەژماری کۆمیشن"]
+    : role==="captain"
+    ? ["داواکارییەکانی گەیاندن","داهاتی ڕۆژانە و کۆمیشن","مێژووی گەیاندن","هەژماری کاپتن"]
+    : ["گەڕان لە بەشەکانی بازاڕ","داواکاری و مێژووی کڕین","خەڵاتی بانگهێشت و لینکەکان","جزدان و داواکاری Cashout"];
 
-  const isSuperAdmin = user.app_metadata?.role === "super_admin";
+  return <main className="min-h-screen bg-slate-50 px-4 py-6 sm:px-6 lg:px-8" dir="rtl">
+    <div className="mx-auto max-w-7xl">
+      <header className="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="flex items-center gap-3"><span className="grid size-12 place-items-center rounded-2xl bg-orange-500 text-white"><Store/></span><div><p className="text-sm font-black text-orange-600">SHAKH STORE</p><h1 className="text-2xl font-black text-slate-900">داشبۆرد</h1></div></div>
+        <nav className="flex flex-wrap items-center gap-2">
+          <a href="/profile" className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-bold text-slate-700"><UserCircle size={17}/> پرۆفایل</a>
+          <a href="/notifications" className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-bold text-slate-700"><Bell size={17}/> ئاگادارکردنەوە</a>
+        </nav>
+      </header>
 
-  return (
-    <main className="min-h-screen bg-slate-50 px-4 py-10 sm:px-6" dir="rtl">
-      <div className="mx-auto max-w-5xl">
-        <header className="mb-8 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-6">
-          <div className="flex items-center gap-3">
-            <span className="grid size-12 place-items-center rounded-2xl bg-orange-500 text-white"><Store /></span>
-            <div><p className="text-sm font-bold text-orange-600">SHAKH STORE</p><h1 className="text-2xl font-black text-slate-900">داشبۆرد</h1></div>
-          </div>
-          <div className="text-sm text-slate-600">{user.email}</div>
-        </header>
-
-        <section className="mb-6 rounded-2xl border border-slate-200 bg-white p-6">
-          <h2 className="text-xl font-black text-slate-900">بەخێربێیت</h2>
-          <p className="mt-2 text-sm leading-7 text-slate-600">چوونەژوورەوە بە سەرکەوتوویی ئەنجام درا. لەم بەشەوە دەتوانیت بە پەڕە بەردەستەکان بگەیت.</p>
-        </section>
-
-        <div className="grid gap-4 sm:grid-cols-2">
-          <a href="/notifications" className="rounded-2xl border border-slate-200 bg-white p-6 transition hover:border-orange-300 hover:shadow-md">
-            <Bell className="text-orange-500" size={25} /><h3 className="mt-4 font-black text-slate-900">ئاگادارکردنەوەکان</h3><p className="mt-2 text-sm text-slate-500">بینین و خوێندنەوەی ئاگادارکردنەوەکان</p>
-          </a>
-          {isSuperAdmin && <a href="/dashboard/admin/cashouts" className="rounded-2xl border border-slate-200 bg-white p-6 transition hover:border-orange-300 hover:shadow-md">
-            <Wallet className="text-orange-500" size={25} /><h3 className="mt-4 font-black text-slate-900">بەڕێوەبردنی Cashout</h3><p className="mt-2 text-sm text-slate-500">پشکنینی داواکارییەکانی کشانەوەی پارە</p>
-          </a>}
-          <div className="rounded-2xl border border-slate-200 bg-white p-6">
-            <ShieldCheck className="text-blue-600" size={25} /><h3 className="mt-4 font-black text-slate-900">ڕۆڵی هەژمار</h3><p className="mt-2 text-sm text-slate-500">{isSuperAdmin ? "Super Admin" : "بەکارهێنەر"}</p>
-          </div>
+      <section className="mb-6 grid gap-4 lg:grid-cols-[1.4fr_.6fr]">
+        <div className="rounded-2xl bg-[#17243a] p-6 text-white sm:p-8">
+          <p className="text-sm font-bold text-orange-300">بەخێربێیت بۆ SHAKH STORE</p>
+          <h2 className="mt-2 text-2xl font-black sm:text-3xl">{displayName}</h2>
+          <p className="mt-3 text-sm text-slate-300">{user.email}</p>
+          <span className="mt-5 inline-flex rounded-full bg-white/10 px-4 py-2 text-sm font-bold">{roleLabels[role]??role}</span>
         </div>
-      </div>
-    </main>
-  );
+        <div className="rounded-2xl border border-slate-200 bg-white p-6">
+          <div className="flex items-center justify-between"><span className="text-sm font-bold text-slate-500">باڵانسی جزدان</span><Wallet className="text-orange-500"/></div>
+          <p className="mt-4 text-3xl font-black text-slate-900">{new Intl.NumberFormat("en-US").format(balance)} <span className="text-base">IQD</span></p>
+          <p className="mt-2 text-xs leading-6 text-slate-500">باڵانس لە داتابەیسەوە دەخوێندرێتەوە؛ لەم پەڕەیەوە ناگۆڕدرێت.</p>
+        </div>
+      </section>
+
+      <section className="mb-7">
+        <h2 className="mb-4 text-lg font-black text-slate-900">دەستگەیشتنی خێرا</h2>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {cards.map(({title,description,href,icon:Icon})=><a key={href} href={href} className="rounded-2xl border border-slate-200 bg-white p-5 transition hover:-translate-y-0.5 hover:border-orange-300 hover:shadow-md"><Icon className="text-orange-500" size={25}/><h3 className="mt-3 font-black text-slate-900">{title}</h3><p className="mt-1 text-sm leading-6 text-slate-500">{description}</p></a>)}
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-slate-200 bg-white p-6">
+        <div className="flex items-center gap-2"><ClipboardList className="text-orange-500"/><h2 className="text-lg font-black text-slate-900">بەشەکانی ڕۆڵی {roleLabels[role]??role}</h2></div>
+        <p className="mt-2 text-sm text-slate-500">ئەمە ڕێکخستنی بەشەکانی کارە. بەشەکانی خوارەوە هێشتا پێویستیان بە API و پەیوەندی داتابەیس هەیە؛ تا ئەو کاتە وەک بەشی چالاک پیشان نادرێن.</p>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          {modules.map((label,index)=><div key={label} className="flex items-center gap-3 rounded-xl bg-slate-50 p-4"><span className="grid size-9 shrink-0 place-items-center rounded-lg bg-white text-orange-500">{index===0?<ShoppingBag size={18}/>:index===1?<Package size={18}/>:index===2?<Bike size={18}/>:<Utensils size={18}/>}</span><div><p className="text-sm font-bold text-slate-800">{label}</p><p className="mt-1 text-xs text-slate-500">لە پلانی قۆناغی داهاتوودا</p></div></div>)}
+        </div>
+        {admin&&<div className="mt-5 flex items-center gap-2 rounded-xl bg-blue-50 p-4 text-sm text-blue-900"><ShieldCheck size={18}/> دەستگەیشتنی بەڕێوەبەر بەپێی app_metadata.role دیاری دەکرێت.</div>}
+      </section>
+    </div>
+  </main>;
 }
