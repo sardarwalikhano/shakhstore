@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
+import { createInAppNotifications } from "@/lib/server/notifications";
 
 export const runtime="nodejs";
 export const dynamic="force-dynamic";
@@ -28,8 +29,18 @@ export async function PATCH(request:Request){
   const v=raw as Record<string,unknown>,id=typeof v.order_id==="string"?v.order_id:"",next=typeof v.status==="string"?v.status:"";
   if(!/^[0-9a-f-]{36}$/i.test(id)||!["out_for_delivery","delivered"].includes(next))return NextResponse.json({error:"Invalid order or status"},{status:400});
   const previous=next==="out_for_delivery"?"assigned":"out_for_delivery";
-  const {data,error}=await c.db.from("orders").update({status:next}).eq("id",id).eq("captain_id",c.user.id).eq("status",previous).select("id,status,updated_at").maybeSingle();
+  const {data,error}=await c.db.from("orders").update({status:next}).eq("id",id).eq("captain_id",c.user.id).eq("status",previous).select("id,status,updated_at,customer_id,order_number").maybeSingle();
   if(error)throw error;if(!data)return NextResponse.json({error:"Order not found, not assigned to you, or status transition is invalid"},{status:409});
-  return NextResponse.json({success:true,order:data});
+  if (data.customer_id) {
+   const message = next === "delivered" ? "داواکارییەکەت گەیشت." : "داواکارییەکەت لە ڕێگای گەیاندندایە.";
+   await createInAppNotifications([{
+    userId: data.customer_id,
+    type: "delivery",
+    title: "نوێکاری گەیاندن",
+    body: "داواکاری " + String(data.order_number ?? "") + ": " + message,
+    data: { order_id: data.id, status: next },
+   }]);
+  }
+  return NextResponse.json({success:true,order:{id:data.id,status:data.status,updated_at:data.updated_at}});
  }catch(e){console.error("Captain delivery update failed",e);return NextResponse.json({error:"Unable to update delivery status"},{status:500});}
 }
