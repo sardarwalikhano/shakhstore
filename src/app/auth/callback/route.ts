@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 
 export async function GET(request: Request) {
@@ -13,16 +12,13 @@ export async function GET(request: Request) {
   const loginError = (reason: string, detail?: string | null) => {
     const target = new URL("/login", origin);
     target.searchParams.set("error", reason);
-    // Show only a short, human-readable provider error; never include tokens or secrets.
     if (detail) target.searchParams.set("detail", detail.slice(0, 240));
     return NextResponse.redirect(target);
   };
 
-  // OAuth providers can return an error without an authorization code.
   if (providerError) {
     return loginError("oauth", searchParams.get("error_description") ?? providerError);
   }
-
   if (!code) {
     return loginError("callback", searchParams.get("error_description"));
   }
@@ -30,23 +26,30 @@ export async function GET(request: Request) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !key) {
-    return loginError("config", "NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY is missing on the server.");
+    return loginError("config", "Supabase server configuration is missing.");
   }
 
-  const cookieStore = await cookies();
+  // Set Supabase auth cookies on the exact redirect response sent to the browser.
+  const response = NextResponse.redirect(new URL(next, origin));
   const supabase = createServerClient(url, key, {
     cookieOptions: { path: "/", sameSite: "lax", secure: true },
     auth: { flowType: "pkce", persistSession: true, autoRefreshToken: true },
     cookies: {
-      getAll: () => cookieStore.getAll(),
-      setAll: (values) => values.forEach(({ name, value, options }) => cookieStore.set(name, value, options)),
+      getAll: () => request.cookies.getAll(),
+      setAll: (values) => {
+        values.forEach(({ name, value, options }) => {
+          response.cookies.set(name, value, { ...options, path: options?.path ?? "/" });
+        });
+      },
     },
   });
 
-  const { error } = await supabase.auth.exchangeCodeForSession(code);
-  if (error) {
-    return loginError("exchange", error.message);
+  const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+  if (error) return loginError("exchange", error.message);
+  if (!data.session || !data.user) {
+    return loginError("session", "Supabase returned no session after OAuth.");
   }
 
-  return NextResponse.redirect(new URL(next, origin));
+  response.headers.set("Cache-Control", "no-store, max-age=0");
+  return response;
 }
