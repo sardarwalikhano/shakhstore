@@ -23,6 +23,11 @@
 - M11 code and dependency changes committed after that deployment require their own production build verification.
 - Previous lint output contained three `@next/next/no-img-element` warnings in the product and marketplace pages.
 
+
+## Automated CI
+
+The repository now includes `.github/workflows/ci.yml`. On pushes to `main` and pull requests targeting `main`, GitHub Actions installs dependencies, reports the npm audit severity summary, runs ESLint, runs TypeScript, and creates a production build using placeholder-only Supabase environment values. No production secrets are placed in the workflow.
+
 ## Required production QA
 
 - Verify HTTPS redirects and HSTS on the canonical domain and all production subdomains.
