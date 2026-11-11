@@ -6,6 +6,7 @@ type Delivery={id:string;order_number:string;status:string;total_iqd:number;deli
 type Earnings={commission_rate_bps:number;accrued_total_iqd:number;paid_total_iqd:number;commissions:{id:string;order_id:string;delivery_fee_iqd:number;commission_iqd:number;status:string;completed_at:string;orders:{order_number:string}|{order_number:string}[]|null}[]};
 const money=(n:number)=>new Intl.NumberFormat("en-US").format(n)+" د.ع";
 const storeName=(s:Delivery["stores"])=>Array.isArray(s)?s[0]?.name:s?.name;
+const commissionOrderNumber=(row:Earnings["commissions"][number])=>Array.isArray(row.orders)?row.orders[0]?.order_number:row.orders?.order_number;
 export default function CaptainDeliveriesPage(){
  const [deliveries,setDeliveries]=useState<Delivery[]>([]),[earnings,setEarnings]=useState<Earnings|null>(null),[earningsError,setEarningsError]=useState(""),[loading,setLoading]=useState(true),[busy,setBusy]=useState(""),[error,setError]=useState(""),[notice,setNotice]=useState("");
  const load=useCallback(async()=>{
@@ -40,6 +41,13 @@ export default function CaptainDeliveriesPage(){
   <div className="rounded-2xl border bg-white p-4"><p className="text-xs text-slate-500">ڕێژەی ئێستای پاداشت</p><strong className="mt-2 block text-2xl font-black">{(earnings.commission_rate_bps/100).toLocaleString("en-US")}%</strong></div>
  </section>
  }
+ {earnings&&earnings.commissions.length>0&&<section className="mb-5 rounded-2xl border bg-white p-5">
+  <h2 className="mb-3 font-black">وردەکاری پاداشتی گەیاندنەکان</h2>
+  <div className="divide-y">{earnings.commissions.map(row=><div key={row.id} className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm">
+   <div><p className="font-bold">{commissionOrderNumber(row)??row.order_id}</p><p className="mt-1 text-xs text-slate-500">{new Date(row.completed_at).toLocaleString("ku-IQ")} · کرێ: {money(Number(row.delivery_fee_iqd))}</p></div>
+   <div className="text-left"><strong className="text-orange-600">{money(Number(row.commission_iqd))}</strong><p className="mt-1 text-xs text-slate-500">{(row.commission_rate_bps/100).toLocaleString("en-US")}% · {row.status==="paid"?"پارەدراو":row.status==="voided"?"هەڵوەشێنراوە":"تۆمارکراو / نەدراوە"}</p></div>
+  </div>)}</div>
+ </section>}
  {loading?<div className="rounded-2xl border bg-white p-10 text-center">بارکردن...</div>:deliveries.length===0?<div className="rounded-2xl border bg-white p-12 text-center text-slate-500">هێشتا هیچ داواکارییەک بۆ تۆ دیاری نەکراوە.</div>:<div className="space-y-4">{deliveries.map(d=><article key={d.id} className="rounded-2xl border bg-white p-5 shadow-sm"><div className="flex flex-wrap justify-between gap-2"><div><h2 className="font-black">{d.order_number}</h2><p className="mt-1 text-xs text-slate-500">{storeName(d.stores)??"دوکان"} · {new Date(d.assigned_at??d.created_at).toLocaleString("ku-IQ")}</p></div><span className="rounded-full bg-orange-50 px-3 py-2 text-xs font-bold text-orange-700">{d.status==="assigned"?"نوێ / وەرگیراو":d.status==="out_for_delivery"?"لە ڕێگای گەیاندندایە":"گەیشتووە"}</span></div>
  <div className="mt-4 rounded-xl bg-slate-50 p-4"><p className="flex items-center gap-2 text-sm font-bold"><MapPin size={17} className="text-orange-500"/> {d.delivery_address}</p><p className="mt-2 text-sm">کڕیار: {d.customer_name??"کڕیاری SHAKH"}</p>{d.customer_phone&&<p className="mt-1 text-sm">مۆبایل: <a className="font-bold text-orange-600" href={"tel:"+d.customer_phone}>{d.customer_phone}</a></p>}</div>
  <div className="my-4 divide-y border-y">{(d.order_items??[]).map(i=><div key={i.id} className="flex justify-between py-2 text-sm"><span>{i.product_name}</span><strong>× {i.quantity}</strong></div>)}</div>
