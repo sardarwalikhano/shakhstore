@@ -30,7 +30,7 @@ Trusted server-side notification delivery is now connected to these order events
 
 The shared writer is `src/lib/server/notifications.ts`. It uses the Supabase service-role key only on the server, validates recipients and titles, limits body length, and logs insertion failures. Notification delivery is deliberately non-fatal: a successful order operation remains successful if notification insertion fails. Notification data contains order identifiers and status only; customer contact details are not copied into notification payloads.
 
-Referral reward accrual and cashout review notifications are not yet wired to business events. Browser push subscription registration and VAPID-based delivery are also not enabled; the service-worker push handler alone is not an end-to-end push service.
+Cashout review is now connected after the atomic `review_wallet_cashout` RPC succeeds: the reward-wallet owner receives an approval or rejection notice. Approval notices distinguish the ledger approval from the separate real-world payout operation; the 75% external payout is not represented as completed by the notification. Referral reward accrual is not yet wired: the current app API routes do not expose a reward-settlement event producer, and the legacy settlement function was removed by the cashout migration. Browser push subscription registration and VAPID-based delivery are also not enabled; the service-worker push handler alone is not an end-to-end push service.
 
 ## Verification
 
