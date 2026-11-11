@@ -18,9 +18,16 @@ async function adminContext(){
 export async function GET(){
   try{
     const ctx=await adminContext();if("response" in ctx)return ctx.response;
-    const {data,error}=await ctx.db.from("stores").select("id,owner_id,name,slug,store_type,description,phone,address,status,delivery_fee_iqd,admin_note,reviewed_by,reviewed_at,created_at").order("created_at",{ascending:false}).limit(200);
-    if(error)throw error;
-    const stores=await Promise.all((data??[]).map(async s=>{const {data}=await ctx.db.auth.admin.getUserById(s.owner_id);return {...s,owner_email:data.user?.email??null};}));
+    const primary=await ctx.db.from("stores").select("id,owner_id,name,slug,store_type,description,phone,address,status,delivery_fee_iqd,admin_note,reviewed_by,reviewed_at,created_at").order("created_at",{ascending:false}).limit(200);
+    let rows=primary.data;
+    if(primary.error){
+      const missingFeeColumn=primary.error.code==="42703"||primary.error.message.includes("delivery_fee_iqd");
+      if(!missingFeeColumn)throw primary.error;
+      const fallback=await ctx.db.from("stores").select("id,owner_id,name,slug,store_type,description,phone,address,status,admin_note,reviewed_by,reviewed_at,created_at").order("created_at",{ascending:false}).limit(200);
+      if(fallback.error)throw fallback.error;
+      rows=(fallback.data??[]).map(s=>({...s,delivery_fee_iqd:null}));
+    }
+    const stores=await Promise.all((rows??[]).map(async s=>{const {data}=await ctx.db.auth.admin.getUserById(s.owner_id);return {...s,owner_email:data.user?.email??null};}));
     return NextResponse.json({stores});
   }catch(e){console.error("Admin stores list failed",e);return NextResponse.json({error:"Unable to load stores"},{status:500});}
 }
