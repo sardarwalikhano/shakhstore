@@ -75,7 +75,7 @@ export default function MarketPage() {
             {products.map(p=><article key={p.id} className="overflow-hidden rounded-2xl border bg-white shadow-sm">
               {p.image_url?<img src={p.image_url} alt={p.name} className="h-44 w-full object-cover"/>:<div className="grid h-44 place-items-center bg-orange-50 text-orange-300"><Store size={42}/></div>}
               <div className="p-4"><p className="text-xs font-bold text-orange-600">{storeOf(p)?.name??"SHAKH STORE"}</p><h2 className="mt-1 font-black text-slate-900">{p.name}</h2>{p.description&&<p className="mt-2 line-clamp-2 text-sm text-slate-500">{p.description}</p>}
-                <div className="mt-4 flex items-center justify-between gap-2"><strong className="text-orange-600">{money(p.price_iqd)}</strong><span className="text-xs text-slate-400">کۆگا: {p.stock_quantity}</span></div>
+                <div className="mt-4 flex items-center justify-between gap-2"><strong className="text-orange-600">{money(p.price_iqd)}</strong><span className={p.stock_quantity>0?"text-xs text-slate-400":"text-xs font-bold text-red-600"}>{p.stock_quantity>0?`کۆگا: ${p.stock_quantity}`:"بەردەست نییە"}</span></div>
                 <div className="mt-4 flex items-center justify-between rounded-xl bg-slate-50 p-2"><button aria-label="کەمکردنەوە" onClick={()=>change(p,-1)} className="grid size-9 place-items-center rounded-lg border bg-white"><Minus size={16}/></button><strong>{cart[p.id]??0}</strong><button aria-label="زیادکردن" disabled={(cart[p.id]??0)>=p.stock_quantity} onClick={()=>change(p,1)} className="grid size-9 place-items-center rounded-lg bg-orange-500 text-white disabled:opacity-40"><Plus size={16}/></button></div>
               </div>
             </article>)}
