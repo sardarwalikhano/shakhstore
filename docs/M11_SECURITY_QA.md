@@ -23,11 +23,12 @@
 
 ## Build-time verification
 
-- GitHub Actions run `43074976824` completed successfully for commit `9d9ab18086152ee7657585fe401baf408d80450c`.
-- ESLint completed without the previous `@next/next/no-img-element` warnings after product and marketplace images were migrated to `next/image`.
+- GitHub Actions run `43083174727` completed successfully for commit `480203d55f05707800e2d429eb6ecfc4bad99e7d`.
+- The audit reported **0 vulnerabilities** (0 low, 0 moderate, 0 high, 0 critical).
+- ESLint completed successfully with no lint errors.
 - TypeScript completed successfully.
 - Next.js production build compiled successfully and generated all 22 static pages.
-- Vercel's latest previously confirmed READY production deployment was commit `72856104ab5ea80e7958fd91009ff3bae31922f0`. New commits must be checked against Vercel deployment records before claiming they are live.
+- Vercel deployment `dpl_ETgQM4PdsMtYmaVwrvGyayuLvNLi` reached `READY` for production commit `480203d55f05707800e2d429eb6ecfc4bad99e7d`. The deployment aliases include `daim-post.online` and `www.daim-post.online`.
 
 ## Automated CI
 
