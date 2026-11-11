@@ -18,7 +18,7 @@ async function adminContext(){
 export async function GET(){
   try{
     const ctx=await adminContext();if("response" in ctx)return ctx.response;
-    const {data,error}=await ctx.db.from("stores").select("id,owner_id,name,slug,store_type,description,phone,address,status,admin_note,reviewed_by,reviewed_at,created_at").order("created_at",{ascending:false}).limit(200);
+    const {data,error}=await ctx.db.from("stores").select("id,owner_id,name,slug,store_type,description,phone,address,status,delivery_fee_iqd,admin_note,reviewed_by,reviewed_at,created_at").order("created_at",{ascending:false}).limit(200);
     if(error)throw error;
     const stores=await Promise.all((data??[]).map(async s=>{const {data}=await ctx.db.auth.admin.getUserById(s.owner_id);return {...s,owner_email:data.user?.email??null};}));
     return NextResponse.json({stores});
@@ -30,6 +30,17 @@ export async function PATCH(request:Request){
     const body:unknown=await request.json();if(!body||typeof body!=="object")return NextResponse.json({error:"Invalid request"},{status:400});
     const v=body as Record<string,unknown>;
     if(typeof v.storeId!=="string"||!/^[0-9a-f-]{36}$/i.test(v.storeId))return NextResponse.json({error:"Invalid store ID"},{status:400});
+    if("deliveryFeeIqd" in v){
+      const fee=Number(v.deliveryFeeIqd);
+      if(!Number.isSafeInteger(fee)||fee<0||fee>100000000)return NextResponse.json({error:"Delivery fee must be between 0 and 100,000,000 IQD"},{status:400});
+      const {data:existing,error:findFeeError}=await ctx.db.from("stores").select("id,status").eq("id",v.storeId).maybeSingle();
+      if(findFeeError)throw findFeeError;
+      if(!existing)return NextResponse.json({error:"Store not found"},{status:404});
+      if(existing.status!=="approved")return NextResponse.json({error:"Only approved stores can have a delivery fee configured"},{status:409});
+      const {data,error}=await ctx.db.from("stores").update({delivery_fee_iqd:fee}).eq("id",v.storeId).select("id,delivery_fee_iqd").single();
+      if(error)throw error;
+      return NextResponse.json({success:true,store:data});
+    }
     if(!["approved","rejected","suspended"].includes(String(v.status)))return NextResponse.json({error:"Invalid status"},{status:400});
     const {data:store,error:findError}=await ctx.db.from("stores").select("id,status,owner_id,store_type").eq("id",v.storeId).maybeSingle();
     if(findError)throw findError;if(!store)return NextResponse.json({error:"Store not found"},{status:404});
