@@ -33,7 +33,7 @@ export default async function HomePage() {
               <span className="block text-lg font-black tracking-wide text-[#17243a]">SHAKH STORE</span>
               <span className="block text-xs text-slate-500">شاخ ستۆر</span>
             </span>
-          </a>
+          </Link>
           {signedIn ? (
             <a href="/profile" className="inline-flex items-center gap-2 rounded-xl bg-[#2457a6] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#1c478b">
               <UserCircle size={17} /> پرۆفایل
