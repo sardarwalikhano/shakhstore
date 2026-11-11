@@ -2,11 +2,9 @@
 
 import { FormEvent, useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
-import { useRouter } from "next/navigation";
 import { Eye, EyeOff, LockKeyhole, Mail, Phone, Store, UserRound } from "lucide-react";
 
 export default function SignupPage() {
-  const router = useRouter();
   const [name,setName]=useState("");
   const [phone,setPhone]=useState("");
   const [email,setEmail]=useState("");
