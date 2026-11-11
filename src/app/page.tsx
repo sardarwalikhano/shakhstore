@@ -41,7 +41,7 @@ export default async function HomePage() {
           ) : (
             <Link href="/login" className="inline-flex items-center gap-2 rounded-xl bg-[#2457a6] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#1c478b]">
               چوونەژوورەوە <ArrowLeft size={16} />
-            </a>
+            </Link>
           )}
         </div>
       </header>
