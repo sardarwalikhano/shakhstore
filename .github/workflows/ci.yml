@@ -36,9 +36,6 @@ jobs:
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
-      - name: Apply non-breaking dependency security fixes
-        run: npm audit fix --no-fund
-
       - name: Report dependency vulnerabilities
         shell: bash
         run: |
