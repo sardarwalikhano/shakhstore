@@ -36,7 +36,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const supabase = getSupabase();
-      const redirectTo = new URL("/auth/callback?next=/dashboard", window.location.origin).toString();
+      const redirectTo = "https://daim-post.online/auth/callback?next=/dashboard";
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: { redirectTo, queryParams: { prompt: "select_account" } },
