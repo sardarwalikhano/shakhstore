@@ -21,9 +21,14 @@ export async function PATCH(request:Request,{params}:Params){
  try{
   const c=await context();if("response" in c)return c.response;
   const {id}=await params;if(!/^[0-9a-f-]{36}$/i.test(id))return NextResponse.json({error:"Invalid product ID"},{status:400});
-  const {data:current,error:findError}=await c.db.from("products").select("id,owner_id").eq("id",id).maybeSingle();
+  const {data:current,error:findError}=await c.db.from("products").select("id,owner_id,store_id").eq("id",id).maybeSingle();
   if(findError)throw findError;if(!current)return NextResponse.json({error:"Product not found"},{status:404});
-  if(c.role!=="super_admin"&&c.role!=="admin"&&current.owner_id!==c.user.id)return NextResponse.json({error:"Forbidden"},{status:403});
+  if(c.role!=="super_admin"&&c.role!=="admin"){
+   if(current.owner_id!==c.user.id)return NextResponse.json({error:"Forbidden"},{status:403});
+   const {data:store,error:storeError}=await c.db.from("stores").select("id").eq("owner_id",c.user.id).eq("status","approved").maybeSingle();
+   if(storeError)throw storeError;
+   if(!store||current.store_id!==store.id)return NextResponse.json({error:"Store inactive or product not owned"},{status:403});
+  }
   const raw:unknown=await request.json();if(!raw||typeof raw!=="object")return NextResponse.json({error:"Invalid request"},{status:400});
   const v=raw as Record<string,unknown>,patch:Record<string,unknown>={};
   if("name" in v){if(typeof v.name!=="string"||v.name.trim().length<2||v.name.trim().length>160)return NextResponse.json({error:"Product name is invalid"},{status:400});patch.name=v.name.trim();}
@@ -44,7 +49,12 @@ export async function DELETE(_request:Request,{params}:Params){
   const c=await context();if("response" in c)return c.response;
   const {id}=await params;if(!/^[0-9a-f-]{36}$/i.test(id))return NextResponse.json({error:"Invalid product ID"},{status:400});
   let q=c.db.from("products").delete().eq("id",id);
-  if(c.role!=="super_admin"&&c.role!=="admin")q=q.eq("owner_id",c.user.id);
+  if(c.role!=="super_admin"&&c.role!=="admin"){
+   const {data:store,error:storeError}=await c.db.from("stores").select("id").eq("owner_id",c.user.id).eq("status","approved").maybeSingle();
+   if(storeError)throw storeError;
+   if(!store)return NextResponse.json({error:"Store inactive"},{status:403});
+   q=q.eq("owner_id",c.user.id).eq("store_id",store.id);
+  }
   const {data,error}=await q.select("id").maybeSingle();
   if(error)throw error;if(!data)return NextResponse.json({error:"Product not found or access denied"},{status:404});
   return NextResponse.json({success:true});
