@@ -36,14 +36,6 @@ export async function PATCH(request:Request){
     if(store.status!=="pending"&&v.status!=="suspended")return NextResponse.json({error:"Only pending applications can be approved or rejected"},{status:409});
     const {data,error}=await ctx.db.from("stores").update({status:v.status,admin_note:typeof v.note==="string"?v.note.trim().slice(0,1000):null,reviewed_by:ctx.user.id,reviewed_at:new Date().toISOString()}).eq("id",v.storeId).select("id,status,admin_note,reviewed_at").single();
     if(error)throw error;
-    if(v.status==="approved"){
-      const {data:owner,error:ownerError}=await ctx.db.auth.admin.getUserById(store.owner_id);
-      if(ownerError)throw ownerError;
-      if(owner.user){
-        const {error:updateError}=await ctx.db.auth.admin.updateUserById(owner.user.id,{app_metadata:{...(owner.user.app_metadata??{}),role:store.store_type}});
-        if(updateError)throw updateError;
-      }
-    }
     return NextResponse.json({success:true,store:data});
   }catch(e){console.error("Store review failed",e);return NextResponse.json({error:"Unable to review store"},{status:500});}
 }
