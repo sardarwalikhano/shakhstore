@@ -1,6 +1,6 @@
 "use client";
 import {useEffect,useState} from "react";
-import {Store,RefreshCw,Clock3,CheckCircle2,AlertCircle} from "lucide-react";
+import {Store,Clock3,CheckCircle2} from "lucide-react";
 
 type StoreData={id:string;name:string;slug:string;store_type:string;description:string|null;phone:string|null;address:string|null;status:string;admin_note:string|null};
 const types=[{value:"restaurant",label:"چێشتخانە"},{value:"supermarket",label:"سوپەرمارکێت"},{value:"produce_vendor",label:"فرۆشیاری بەرهەم"},{value:"meat_seafood_vendor",label:"فرۆشیاری گۆشت و ماسی"}];
