@@ -41,21 +41,22 @@ export async function POST(request:Request){
   if(order.status!=="ready"||order.captain_id)return NextResponse.json({error:"Only ready and unassigned orders can be assigned"},{status:409});
   const {data,error}=await c.db.from("orders").update({captain_id:captainId,assigned_at:new Date().toISOString(),status:"assigned"}).eq("id",orderId).eq("status","ready").is("captain_id",null).select("id,status,captain_id,assigned_at").maybeSingle();
   if(error)throw error;if(!data)return NextResponse.json({error:"Order was assigned by another admin. Refresh the page."},{status:409});
-  const notifications = [{
+  await createInAppNotifications([{
    userId: captainId,
-   type: "delivery" as const,
+   type: "delivery",
    title: "داواکارییەکی نوێت بۆ دیاریکرا",
    body: "داواکاری " + String(order.order_number ?? "") + " ئێستا لە لیستی گەیاندنەکانتە.",
    data: { order_id: orderId, status: "assigned" },
-  }];
-  if (order.customer_id) notifications.push({
-   userId: order.customer_id,
-   type: "order" as const,
-   title: "کاپتن بۆ داواکارییەکەت دیاریکرا",
-   body: "داواکاری " + String(order.order_number ?? "") + " ئامادەی گەیاندنە.",
-   data: { order_id: orderId, status: "assigned" },
-  });
-  await createInAppNotifications(notifications);
+  }]);
+  if (order.customer_id) {
+   await createInAppNotifications([{
+    userId: order.customer_id,
+    type: "order",
+    title: "کاپتن بۆ داواکارییەکەت دیاریکرا",
+    body: "داواکاری " + String(order.order_number ?? "") + " ئامادەی گەیاندنە.",
+    data: { order_id: orderId, status: "assigned" },
+   }]);
+  }
   return NextResponse.json({success:true,order:data});
  }catch(e){console.error("Admin delivery assignment failed",e);return NextResponse.json({error:"Unable to assign captain"},{status:500});}
 }
