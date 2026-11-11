@@ -25,7 +25,7 @@ export async function GET(){
    const {data,error}=await c.db.from("products")
     .select("id,store_id,owner_id,name,description,category,price_iqd,image_url,stock_quantity,created_at,stores(id,name,slug,store_type,status)")
     .eq("is_active",true).eq("stores.status","approved")
-    .gt("stock_quantity",0).order("created_at",{ascending:false}).limit(200);
+    .order("created_at",{ascending:false}).limit(200);
    if(error)throw error;
    // Legacy Super Admin posts created before store selection have a null store_id.
    // Keep those platform-owned items visible as SHAKH STORE catalog entries.
@@ -36,7 +36,7 @@ export async function GET(){
    if(adminIds.length){
     const {data:orphaned,error:orphanError}=await c.db.from("products")
      .select("id,store_id,owner_id,name,description,category,price_iqd,image_url,stock_quantity,created_at")
-     .is("store_id",null).in("owner_id",adminIds).eq("is_active",true).gt("stock_quantity",0)
+     .is("store_id",null).in("owner_id",adminIds).eq("is_active",true)
      .order("created_at",{ascending:false}).limit(200);
     if(orphanError)throw orphanError;
     legacy=(orphaned??[]).map(p=>({...p,store_id:null,stores:null}));
