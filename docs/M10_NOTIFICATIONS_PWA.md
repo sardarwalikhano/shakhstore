@@ -19,9 +19,18 @@ Apply after the already completed migrations 0001, 0002, and 0003:
 
 The table is private by RLS. Authenticated users can select only their own notifications and update only the `read_at` column. Direct client insert/delete is not granted. Trusted server processes (service role) must create notification rows.
 
-## Current scope and remaining integration
+## Order lifecycle integration
 
-This phase establishes the in-app notification inbox and PWA delivery foundation. Business-event producers (order status changes, referral reward accrual, and cashout review) still need to call a trusted server-side notification writer. Browser push subscription registration and VAPID-based delivery are not enabled yet; do not treat the service-worker push handler alone as an end-to-end push service.
+Trusted server-side notification delivery is now connected to these order events:
+
+- Customer places an order: the owning store receives an in-app notification.
+- Merchant changes an order to confirmed, preparing, or ready: the customer is notified.
+- Admin assigns a captain: the captain and customer are notified.
+- Captain changes delivery to out-for-delivery or delivered: the customer is notified.
+
+The shared writer is `src/lib/server/notifications.ts`. It uses the Supabase service-role key only on the server, validates recipients and titles, limits body length, and logs insertion failures. Notification delivery is deliberately non-fatal: a successful order operation remains successful if notification insertion fails. Notification data contains order identifiers and status only; customer contact details are not copied into notification payloads.
+
+Referral reward accrual and cashout review notifications are not yet wired to business events. Browser push subscription registration and VAPID-based delivery are also not enabled; the service-worker push handler alone is not an end-to-end push service.
 
 ## Verification
 
