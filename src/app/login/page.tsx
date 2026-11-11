@@ -30,7 +30,7 @@ export default function LoginPage() {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
     if (!url || !anonKey) throw new Error("پەیوەندی Supabase ئامادە نییە.");
-    return createBrowserClient(url, anonKey);
+    return createBrowserClient(url, anonKey, { cookieOptions: { path: "/", sameSite: "lax", secure: true }, auth: { flowType: "pkce", persistSession: true, autoRefreshToken: true } });
   }
 
   async function googleLogin() {
