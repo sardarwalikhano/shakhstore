@@ -1,4 +1,5 @@
-import { cookies } from "next/headers";\nimport Link from "next/link";
+import { cookies } from "next/headers";
+import Link from "next/link";
 import { createServerClient } from "@supabase/ssr";
 import { ArrowLeft, Bike, ShoppingBasket, Store, Utensils, Beef, ShieldCheck, UserCircle } from "lucide-react";
 
