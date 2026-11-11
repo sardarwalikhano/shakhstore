@@ -57,12 +57,16 @@ export async function PATCH(request:Request) {
     const {data:order,error:findError}=await c.db.from("orders").select("id,store_id,status,customer_id,order_number").eq("id",id).maybeSingle();
     if(findError) throw findError;
     if(!order) return NextResponse.json({error:"Order not found"},{status:404});
-    if(c.role!=="admin"&&c.role!=="super_admin") {
-      const ids=await ownedStoreIds(c.db,c.user.id);
-      if(!ids.includes(order.store_id)) return NextResponse.json({error:"You do not own this store"},{status:403});
+    const permittedStoreIds = c.role==="admin"||c.role==="super_admin"
+      ? [order.store_id]
+      : await ownedStoreIds(c.db,c.user.id);
+    if(!permittedStoreIds.includes(order.store_id)) {
+      return NextResponse.json({error:"You do not own this store"},{status:403});
     }
     if(NEXT_STATUS[order.status]!==next) return NextResponse.json({error:"This status transition is not allowed"},{status:409});
-    const {data,error}=await c.db.from("orders").update({status:next}).eq("id",id).eq("status",order.status).select("id,status,updated_at").maybeSingle();
+    const {data,error}=await c.db.from("orders").update({status:next})
+      .eq("id",id).in("store_id",permittedStoreIds).eq("status",order.status)
+      .select("id,status,updated_at").maybeSingle();
     if(error) throw error;
     if(!data) return NextResponse.json({error:"Order changed concurrently. Refresh and try again."},{status:409});
     const statusLabel: Record<string, string> = { confirmed: "دوکان داواکارییەکەی پشتڕاست کردەوە.", preparing: "ئامادەکردنی داواکارییەکەت دەستی پێکرد.", ready: "داواکارییەکەت ئامادەیە بۆ گەیاندن." };
