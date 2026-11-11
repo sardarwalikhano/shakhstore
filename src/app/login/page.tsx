@@ -2,7 +2,8 @@
 
 import { FormEvent, useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
-import { useRouter } from "next/navigation";\nimport Link from "next/link";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Eye, EyeOff, LockKeyhole, Mail, Store } from "lucide-react";
 
 export default function LoginPage() {
