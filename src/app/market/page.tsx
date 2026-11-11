@@ -6,7 +6,7 @@ import { ShoppingCart, Store, Minus, Plus, RefreshCw } from "lucide-react";
 type Product = {
   id: string; store_id: string; name: string; description: string | null;
   category: string; price_iqd: number; image_url: string | null; stock_quantity: number;
-  stores: { id: string; name: string; slug: string; store_type: string; status: string } | { id: string; name: string; slug: string; store_type: string; status: string }[] | null;
+  stores: { id: string; name: string; slug: string; store_type: string; status: string; delivery_fee_iqd: number } | { id: string; name: string; slug: string; store_type: string; status: string; delivery_fee_iqd: number }[] | null;
 };
 const money = (n:number) => new Intl.NumberFormat("en-US").format(n) + " د.ع";
 const storeOf = (p:Product) => Array.isArray(p.stores) ? p.stores[0] : p.stores;
@@ -35,6 +35,9 @@ export default function MarketPage() {
   const selected = products.filter(p => (cart[p.id] ?? 0) > 0);
   const storeIds = [...new Set(selected.map(p=>p.store_id))];
   const subtotal = useMemo(()=>selected.reduce((sum,p)=>sum+p.price_iqd*(cart[p.id]??0),0),[selected,cart]);
+  const selectedStore = selected.length > 0 ? storeOf(selected[0]) : null;
+  const deliveryFee = storeIds.length === 1 ? Number(selectedStore?.delivery_fee_iqd ?? 0) : 0;
+  const grandTotal = subtotal + deliveryFee;
   const count = selected.reduce((sum,p)=>sum+(cart[p.id]??0),0);
 
   function change(p:Product,delta:number) {
@@ -87,7 +90,7 @@ export default function MarketPage() {
           {storeIds.length>1&&<p className="mb-3 rounded-lg bg-amber-50 p-3 text-xs text-amber-800">بەرهەمەکان لە زیاتر لە یەک دوکانن. داواکارییەکان جیاواز تۆمار بکە.</p>}
           <label className="mb-2 block text-sm font-bold" htmlFor="delivery-address">ناونیشانی گەیاندن</label>
           <textarea id="delivery-address" value={address} onChange={e=>setAddress(e.target.value)} rows={3} maxLength={1000} placeholder="شار، گەڕەک، شەقام و نیشانە..." className="w-full rounded-xl border border-slate-200 p-3 text-sm outline-none focus:border-orange-400"/>
-          <div className="mt-4 flex justify-between border-t pt-4"><span className="font-bold">کۆی گشتی</span><strong className="text-lg text-orange-600">{money(subtotal)}</strong></div>
+          <div className="mt-4 space-y-2 border-t pt-4 text-sm"><div className="flex justify-between"><span className="text-slate-500">کۆی بەرهەمەکان</span><strong>{money(subtotal)}</strong></div><div className="flex justify-between"><span className="text-slate-500">کرێی گەیاندن</span><strong>{storeIds.length===1?money(deliveryFee):"—"}</strong></div><div className="flex justify-between border-t pt-2"><span className="font-black">کۆی گشتی</span><strong className="text-lg text-orange-600">{money(grandTotal)}</strong></div></div>
           <button disabled={placing||selected.length===0||storeIds.length!==1} onClick={()=>void checkout()} className="mt-4 w-full rounded-xl bg-orange-500 px-4 py-3 font-black text-white disabled:cursor-not-allowed disabled:opacity-40">{placing?"تۆمارکردن...":"تەواوکردنی کڕین"}</button>
           <p className="mt-3 text-xs leading-5 text-slate-400">پارەدان لە کاتی گەیاندن/ڕێککەوتنی دواترەوەیە؛ گیت‌وەی پارەدان هێشتا پەیوەست نەکراوە.</p>
         </aside>
