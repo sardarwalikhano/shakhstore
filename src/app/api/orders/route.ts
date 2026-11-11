@@ -68,10 +68,7 @@ export async function POST(request: Request) {
     if (address.length < 5 || address.length > 1000) {
       return NextResponse.json({ error: "ناونیشانی گەیاندن پێویستە." }, { status: 400 });
     }
-    const fee = Number(v.delivery_fee_iqd ?? 0);
-    if (!Number.isSafeInteger(fee) || fee < 0 || fee > 100000000) {
-      return NextResponse.json({ error: "کرێی گەیاندن دروست نییە." }, { status: 400 });
-    }
+    // The database trigger replaces this placeholder with the approved store's configured fee.
     const { data, error } = await c.db.rpc("place_store_order", {
       p_customer_id: c.user.id,
       p_items: items,
@@ -79,7 +76,7 @@ export async function POST(request: Request) {
       p_customer_name: typeof v.customer_name === "string" ? v.customer_name.slice(0, 120) : null,
       p_customer_phone: typeof v.customer_phone === "string" ? v.customer_phone.slice(0, 40) : null,
       p_customer_note: typeof v.customer_note === "string" ? v.customer_note.slice(0, 1000) : null,
-      p_delivery_fee_iqd: fee,
+      p_delivery_fee_iqd: 0,
     });
     if (error) {
       const message = error.message.includes("Insufficient stock") ? "کۆگای بەرهەم بەشی ئەم داواکارییە ناکات." :
