@@ -45,7 +45,12 @@ export async function GET(){
    return NextResponse.json({products});
   }
   let q=c.db.from("products").select("id,store_id,owner_id,name,description,category,price_iqd,image_url,sku,stock_quantity,is_active,created_at,updated_at").order("created_at",{ascending:false}).limit(200);
-  if(MERCHANT_ROLES.includes(c.role as typeof MERCHANT_ROLES[number]))q=q.eq("owner_id",c.user.id);
+  if(MERCHANT_ROLES.includes(c.role as typeof MERCHANT_ROLES[number])){
+   const {data:store,error:storeError}=await c.db.from("stores").select("id").eq("owner_id",c.user.id).eq("status","approved").maybeSingle();
+   if(storeError)throw storeError;
+   if(!store)return NextResponse.json({products:[],role:c.role,store_status:"inactive"});
+   q=q.eq("owner_id",c.user.id).eq("store_id",store.id);
+  }
   else if(c.role!=="super_admin"&&c.role!=="admin")return NextResponse.json({error:"Access denied"},{status:403});
   const {data,error}=await q;if(error)throw error;
   return NextResponse.json({products:data??[],role:c.role});
