@@ -27,7 +27,7 @@ export default function SignupPage() {
       const key=process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
       if(!url||!key) throw new Error("پەیوەندی Supabase ئامادە نییە.");
       const supabase=createBrowserClient(url,key);
-      const emailRedirectTo=new URL("/auth/callback?next=/dashboard",window.location.origin).toString();
+      const emailRedirectTo="https://daim-post.online/auth/callback?next=/dashboard";
       const {data,error}=await supabase.auth.signUp({
         email:email.trim().toLowerCase(),
         password,
@@ -35,7 +35,7 @@ export default function SignupPage() {
       });
       if(error) throw error;
       if(data.session){
-        router.replace("/dashboard");router.refresh();
+        window.location.replace("/dashboard");
       } else {
         setSuccess("هەژمارەکەت دروست کرا. تکایە ئیمەیڵەکەت بپشکنە و لینکی پشتڕاستکردنەوە بکەرەوە.");
       }
