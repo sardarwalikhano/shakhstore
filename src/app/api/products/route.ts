@@ -36,11 +36,10 @@ export async function GET(){
      catalogStoreIds.forEach(id=>feeByStore.set(id,null));
     }else (fees??[]).forEach(store=>feeByStore.set(store.id,Number(store.delivery_fee_iqd)));
    }
-   const productsWithFees=(data??[]).map(p=>{
-    const fee=p.store_id?feeByStore.get(p.store_id)??null:null;
-    if(Array.isArray(p.stores))return {...p,stores:p.stores.map(s=>({...s,delivery_fee_iqd:fee}))};
-    return {...p,stores:p.stores?{...p.stores,delivery_fee_iqd:fee}:null};
-   });
+   const productsWithFees=(data??[]).map(p=>({
+    ...p,
+    delivery_fee_iqd:p.store_id?feeByStore.get(p.store_id)??null:null
+   }));
    // Legacy Super Admin posts created before store selection have a null store_id.
    // Keep those platform-owned items visible as SHAKH STORE catalog entries.
    const {data:authUsers,error:usersError}=await c.db.auth.admin.listUsers({page:1,perPage:200});
