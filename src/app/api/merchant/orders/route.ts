@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -20,7 +20,7 @@ async function context() {
   return {user,role,db:createClient(url,service,{auth:{autoRefreshToken:false,persistSession:false}})};
 }
 
-async function ownedStoreIds(db:any,userId:string) {
+async function ownedStoreIds(db:SupabaseClient,userId:string) {
   const {data,error}=await db.from("stores").select("id").eq("owner_id",userId);
   if(error) throw error;
   return (data??[]).map((s:{id:string})=>s.id);
