@@ -11,12 +11,17 @@
 - Merchant order-status updates re-apply the set of owned store IDs in the UPDATE predicate and continue to enforce the expected previous order status.
 - Existing server-side role checks, row-level security, service-role isolation, wallet RPCs, and append-only migrations remain unchanged.
 
+## Dependency security review
+
+- The project previously pinned `react` and `react-dom` to `19.1.7`. These were upgraded to `19.1.10` to address the React Server Components advisory GHSA-xqc2-xf4c-x3h3; the advisory lists 19.1.10 as patched for the 19.1 line.
+- Next.js remains on `15.5.29`. The Next.js project release lists 15.5.29 as containing its November 3, 2026 security fixes; do not downgrade below this patch release.
+- The previous Vercel install reported 8 dependency advisories (7 moderate, 1 high), before the React upgrade. A new install/audit result is required to know the remaining count. Do not use `npm audit fix --force` blindly.
+
 ## Build-time verification
 
-- Production Vercel build for the code through commit `ab1561667971c915250a0843f708dfe2313a88fa` completed with state `READY`.
-- The M11 changes are committed after that deployment and require their own production build verification.
+- Production Vercel build through commit `ab1561667971c915250a0843f708dfe2313a88fa` completed with state `READY`.
+- M11 code and dependency changes committed after that deployment require their own production build verification.
 - Previous lint output contained three `@next/next/no-img-element` warnings in the product and marketplace pages.
-- Latest install output reported 8 dependency advisories (7 moderate, 1 high). The dependency graph must be inspected before changing package versions; do not use `npm audit fix --force` blindly.
 
 ## Required production QA
 
