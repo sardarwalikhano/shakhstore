@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
+import { createInAppNotifications } from "@/lib/server/notifications";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -102,6 +103,22 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid admin note" }, { status: 400 });
     }
 
+    // Read the recipient before the atomic RPC. The RPC itself locks the row,
+    // checks that it is still pending, and performs the financial settlement.
+    const { data: cashout, error: cashoutError } = await auth.adminClient
+      .from("wallet_cashout_requests")
+      .select("id,user_id,requested_amount_iqd,cash_amount_iqd,status")
+      .eq("id", requestId)
+      .maybeSingle();
+
+    if (cashoutError) throw cashoutError;
+    if (!cashout) {
+      return NextResponse.json({ error: "Cashout request not found" }, { status: 404 });
+    }
+    if (cashout.status !== "pending") {
+      return NextResponse.json({ error: "Cashout request has already been reviewed" }, { status: 409 });
+    }
+
     const { data, error } = await auth.adminClient.rpc("review_wallet_cashout", {
       p_request_id: requestId,
       p_admin_user_id: auth.user.id,
@@ -113,6 +130,19 @@ export async function POST(request: Request) {
       console.error("Cashout review RPC failed:", error);
       return NextResponse.json({ error: "Cashout review failed" }, { status: 409 });
     }
+
+    const amount = new Intl.NumberFormat("en-US").format(Number(cashout.requested_amount_iqd));
+    const approved = decision === "approve";
+    const cashAmount = new Intl.NumberFormat("en-US").format(Number(cashout.cash_amount_iqd));
+    await createInAppNotifications([{
+      userId: cashout.user_id,
+      type: "cashout",
+      title: approved ? "داواکاری کشانەوە پەسەند کرا" : "داواکاری کشانەوە ڕەتکرایەوە",
+      body: approved
+        ? "داواکاری " + amount + " د.ع پەسەند کرا. بڕی پارەدانی دەرەکی " + cashAmount + " د.عە و پێویستی بە جێبەجێکردنی payout هەیە."
+        : "داواکاری " + amount + " د.ع ڕەتکرایەوە. بڕەکە لە wallet ـەکەتدا بەردەستە.",
+      data: { cashout_request_id: cashout.id, decision },
+    }]);
 
     return NextResponse.json({ success: true, transactionId: data });
   } catch (error) {
