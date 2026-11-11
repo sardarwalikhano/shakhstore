@@ -8,13 +8,13 @@ export const dynamic = "force-dynamic";
  * Exposes configuration presence only; never returns credentials or secrets.
  */
 export async function GET() {
-  const checks = {
-    supabaseUrl: Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL),
-    supabasePublicKey: Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
-    supabaseServiceRoleKey: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY),
-  };
-
-  const ready = Object.values(checks).every(Boolean);
+  const publicSupabaseConfigured = Boolean(
+    process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  );
+  // Check all server dependencies internally, but never disclose whether a
+  // privileged service-role credential is configured through this public route.
+  const ready = publicSupabaseConfigured && Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY);
+  const checks = { publicSupabaseConfigured };
 
   return NextResponse.json(
     {
