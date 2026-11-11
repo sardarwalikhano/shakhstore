@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
+import { createInAppNotifications } from "@/lib/server/notifications";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -83,7 +84,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "داواکاری دەبێت بەرهەمی یەک دوکان لەخۆ بگرێت." }, { status: 409 });
     }
     const { data: store, error: storeError } = await c.db.from("stores")
-      .select("delivery_fee_iqd").eq("id", storeId).eq("status", "approved").maybeSingle();
+      .select("delivery_fee_iqd,owner_id").eq("id", storeId).eq("status", "approved").maybeSingle();
     if (storeError) throw storeError;
     if (!store) {
       return NextResponse.json({ error: "دوکان بەردەست نییە یان پەسەند نەکراوە." }, { status: 409 });
@@ -106,6 +107,15 @@ export async function POST(request: Request) {
       const message = error.message.includes("Insufficient stock") ? "کۆگای بەرهەم بەشی ئەم داواکارییە ناکات." :
         error.message.includes("unavailable") ? "بەرهەم یان دوکان بەردەست نییە." : "تۆمارکردنی داواکاری سەرکەوتوو نەبوو.";
       return NextResponse.json({ error: message }, { status: 409 });
+    }
+    if (store.owner_id) {
+      await createInAppNotifications([{
+        userId: store.owner_id,
+        type: "order",
+        title: "داواکارییەکی نوێ بۆ دوکان",
+        body: "داواکارییەکی نوێ لە دوکانەکەت تۆمار کرا.",
+        data: { order_id: data, status: "pending" },
+      }]);
     }
     return NextResponse.json({ order_id: data }, { status: 201 });
   } catch (error) {
