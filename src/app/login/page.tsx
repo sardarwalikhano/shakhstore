@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -13,6 +13,14 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    const code = new URLSearchParams(window.location.search).get("error");
+    if (code === "oauth") setError("Google چوونەژوورەوە ڕەتیکردەوە یان تەواو نەبوو. ڕێکخستنی Google Provider لە Supabase بپشکنە.");
+    else if (code === "callback") setError("کۆدی گەڕانەوەی Google نەگەیشت. Redirect URL ـەکان لە Supabase و Google بپشکنە.");
+    else if (code === "exchange") setError("کۆدی چوونەژوورەوە لە Supabase پشتڕاست نەکرایەوە. تکایە دووبارە هەوڵ بدە.");
+    else if (code === "config") setError("ڕێکخستنی Supabase لە سێرڤەر تەواو نییە.");
+  }, []);
 
   function getSupabase() {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
