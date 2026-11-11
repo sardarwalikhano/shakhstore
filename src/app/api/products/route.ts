@@ -6,7 +6,7 @@ import { createClient } from "@supabase/supabase-js";
 export const runtime="nodejs";
 export const dynamic="force-dynamic";
 const CATEGORIES=["food","grocery","produce","meat_seafood","drinks","household","other"] as const;
-const MERCHANT_ROLES=["restaurant","supermarket","produce_vendor","meat_seafood_vendor"] as const;
+const MERCHANT_ROLES=["restaurant","supermarket","produce_vendor","meat_seafood_vendor"] as const;\ntype LegacyProduct = { id:string; store_id:null; owner_id:string; name:string; description:string|null; category:string; price_iqd:number; image_url:string|null; stock_quantity:number; created_at:string; stores:null };
 async function context(){
  const url=process.env.NEXT_PUBLIC_SUPABASE_URL,anon=process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,service=process.env.SUPABASE_SERVICE_ROLE_KEY;
  if(!url||!anon||!service)return {response:NextResponse.json({error:"Server configuration is incomplete"},{status:500})};
@@ -31,14 +31,14 @@ export async function GET(){
    const {data:authUsers,error:usersError}=await c.db.auth.admin.listUsers({page:1,perPage:200});
    if(usersError)throw usersError;
    const adminIds=authUsers.users.filter(u=>["super_admin","admin"].includes(String(u.app_metadata?.role??""))).map(u=>u.id);
-   let legacy:any[]=[];
+   let legacy:LegacyProduct[]=[];
    if(adminIds.length){
     const {data:orphaned,error:orphanError}=await c.db.from("products")
      .select("id,store_id,owner_id,name,description,category,price_iqd,image_url,stock_quantity,created_at")
      .is("store_id",null).in("owner_id",adminIds).eq("is_active",true).gt("stock_quantity",0)
      .order("created_at",{ascending:false}).limit(200);
     if(orphanError)throw orphanError;
-    legacy=(orphaned??[]).map(p=>({...p,stores:null}));
+    legacy=(orphaned??[]).map(p=>({...p,store_id:null,stores:null}));
    }
    const products=[...(data??[]),...legacy].sort((x,y)=>Number(new Date(y.created_at??0))-Number(new Date(x.created_at??0))).slice(0,200);
    return NextResponse.json({products});
