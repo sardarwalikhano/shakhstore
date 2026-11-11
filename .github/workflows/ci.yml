@@ -25,12 +25,13 @@ jobs:
       NEXT_PUBLIC_SITE_URL: https://ci-placeholder.example
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
-          node-version: 20
+          node-version: 22
+          package-manager-cache: false
 
       - name: Install dependencies
         run: npm install --no-audit --no-fund
@@ -39,7 +40,23 @@ jobs:
         shell: bash
         run: |
           npm audit --json > npm-audit.json || true
-          node -e 'const report = require("./npm-audit.json"); console.log("npm audit:", JSON.stringify(report.metadata?.vulnerabilities ?? {}, null, 2));'
+          node <<'NODE'
+          const report = require("./npm-audit.json");
+          console.log("npm audit severity summary:", report.metadata?.vulnerabilities ?? {});
+          for (const [name, item] of Object.entries(report.vulnerabilities ?? {})) {
+            const via = (item.via ?? []).map((entry) =>
+              typeof entry === "string" ? entry : `${entry.name}: ${entry.title ?? entry.url ?? "advisory"}`
+            );
+            console.log(JSON.stringify({
+              package: name,
+              severity: item.severity,
+              direct: item.isDirect,
+              range: item.range,
+              fixAvailable: item.fixAvailable,
+              via,
+            }));
+          }
+          NODE
 
       - name: ESLint
         run: npm run lint
