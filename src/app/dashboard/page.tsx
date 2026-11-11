@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createServerClient } from "@supabase/ssr";
 import { Bell, Bike, ClipboardList, Package, ShieldCheck, ShoppingBag, Store, UserCircle, Wallet, Utensils } from "lucide-react";
+import { DashboardMobileNav } from "@/components/dashboard-mobile-nav";
 
 export const dynamic = "force-dynamic";
 
@@ -48,7 +49,7 @@ export default async function DashboardPage() {
     ? ["داواکارییەکانی گەیاندن","داهاتی ڕۆژانە و کۆمیشن","مێژووی گەیاندن","هەژماری کاپتن"]
     : ["گەڕان لە بەشەکانی بازاڕ","داواکاری و مێژووی کڕین","خەڵاتی بانگهێشت و لینکەکان","جزدان و داواکاری Cashout"];
 
-  return <main className="min-h-screen bg-slate-50 px-4 py-6 sm:px-6 lg:px-8" dir="rtl">
+  return <main className="min-h-screen bg-slate-50 px-4 py-6 pb-24 sm:px-6 sm:pb-24 lg:px-8 lg:pb-8" dir="rtl">
     <div className="mx-auto max-w-7xl">
       <header className="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <div className="flex items-center gap-3"><span className="grid size-12 place-items-center rounded-2xl bg-orange-500 text-white"><Store/></span><div><p className="text-sm font-black text-orange-600">SHAKH STORE</p><h1 className="text-2xl font-black text-slate-900">داشبۆرد</h1></div></div>
@@ -88,5 +89,6 @@ export default async function DashboardPage() {
         {admin&&<div className="mt-5 flex items-center gap-2 rounded-xl bg-blue-50 p-4 text-sm text-blue-900"><ShieldCheck size={18}/> دەستگەیشتنی بەڕێوەبەر بەپێی app_metadata.role دیاری دەکرێت.</div>}
       </section>
     </div>
+    <DashboardMobileNav role={role} />
   </main>;
 }
