@@ -2,7 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
-import { useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";\nimport Link from "next/link";
 import { Eye, EyeOff, LockKeyhole, Mail, Store } from "lucide-react";
 
 export default function LoginPage() {
@@ -99,7 +99,7 @@ export default function LoginPage() {
         </form>
         <a href="/forgot-password" className="mt-4 block text-center text-sm font-bold text-orange-600 hover:text-orange-700">وشەی نهێنیت لەبیرکردووە؟</a>
         <p className="mt-4 text-center text-sm text-slate-600">هەژمارت نییە؟ <a href="/signup" className="font-black text-orange-600">هەژمار دروست بکە</a></p>
-        <a href="/" className="mt-5 block text-center text-sm font-bold text-slate-500 hover:text-orange-600">گەڕانەوە بۆ پەڕەی سەرەکی</a>
+        <Link href="/" className="mt-5 block text-center text-sm font-bold text-slate-500 hover:text-orange-600">گەڕانەوە بۆ پەڕەی سەرەکی</Link>
       </section>
     </main>
   );
