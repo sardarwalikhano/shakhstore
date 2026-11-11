@@ -68,7 +68,31 @@ export async function POST(request: Request) {
     if (address.length < 5 || address.length > 1000) {
       return NextResponse.json({ error: "ناونیشانی گەیاندن پێویستە." }, { status: 400 });
     }
-    // The database trigger replaces this placeholder with the approved store's configured fee.
+    // Resolve the single-store cart and read the delivery fee from the database.
+    // If migration 0009 is missing, fail closed rather than placing a zero-fee order.
+    const productIds = items.map((item) => item.product_id);
+    const { data: cartProducts, error: cartError } = await c.db
+      .from("products").select("id,store_id").in("id", productIds);
+    if (cartError) throw cartError;
+    if (!cartProducts || cartProducts.length !== items.length) {
+      return NextResponse.json({ error: "بەرهەمێک لەم داواکارییەدا نەدۆزرایەوە." }, { status: 409 });
+    }
+    const storeIds = new Set(cartProducts.map((product) => product.store_id));
+    const storeId = cartProducts[0]?.store_id;
+    if (storeIds.size !== 1 || !storeId) {
+      return NextResponse.json({ error: "داواکاری دەبێت بەرهەمی یەک دوکان لەخۆ بگرێت." }, { status: 409 });
+    }
+    const { data: store, error: storeError } = await c.db.from("stores")
+      .select("delivery_fee_iqd").eq("id", storeId).eq("status", "approved").maybeSingle();
+    if (storeError) throw storeError;
+    if (!store) {
+      return NextResponse.json({ error: "دوکان بەردەست نییە یان پەسەند نەکراوە." }, { status: 409 });
+    }
+    const deliveryFee = Number(store.delivery_fee_iqd);
+    if (!Number.isSafeInteger(deliveryFee) || deliveryFee < 0 || deliveryFee > 100000000) {
+      throw new Error("Store delivery fee is invalid");
+    }
+
     const { data, error } = await c.db.rpc("place_store_order", {
       p_customer_id: c.user.id,
       p_items: items,
@@ -76,7 +100,7 @@ export async function POST(request: Request) {
       p_customer_name: typeof v.customer_name === "string" ? v.customer_name.slice(0, 120) : null,
       p_customer_phone: typeof v.customer_phone === "string" ? v.customer_phone.slice(0, 40) : null,
       p_customer_note: typeof v.customer_note === "string" ? v.customer_note.slice(0, 1000) : null,
-      p_delivery_fee_iqd: 0,
+      p_delivery_fee_iqd: deliveryFee,
     });
     if (error) {
       const message = error.message.includes("Insufficient stock") ? "کۆگای بەرهەم بەشی ئەم داواکارییە ناکات." :
