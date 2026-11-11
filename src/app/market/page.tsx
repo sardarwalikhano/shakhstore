@@ -6,7 +6,8 @@ import { ShoppingCart, Store, Minus, Plus, RefreshCw } from "lucide-react";
 type Product = {
   id: string; store_id: string | null; name: string; description: string | null;
   category: string; price_iqd: number; image_url: string | null; stock_quantity: number;
-  stores: { id: string; name: string; slug: string; store_type: string; status: string; delivery_fee_iqd: number | null } | { id: string; name: string; slug: string; store_type: string; status: string; delivery_fee_iqd: number | null }[] | null;
+  delivery_fee_iqd: number | null;
+  stores: { id: string; name: string; slug: string; store_type: string; status: string } | { id: string; name: string; slug: string; store_type: string; status: string }[] | null;
 };
 const money = (n:number) => new Intl.NumberFormat("en-US").format(n) + " د.ع";
 const storeOf = (p:Product) => Array.isArray(p.stores) ? p.stores[0] : p.stores;
@@ -37,8 +38,8 @@ export default function MarketPage() {
   const subtotal = useMemo(()=>selected.reduce((sum,p)=>sum+p.price_iqd*(cart[p.id]??0),0),[selected,cart]);
   const selectedStore = selected.length > 0 ? storeOf(selected[0]) : null;
   const orderableStore = storeIds.length === 1 && storeIds[0] !== null;
-  const deliveryFeeConfigured = orderableStore && selectedStore?.delivery_fee_iqd !== null && selectedStore?.delivery_fee_iqd !== undefined;
-  const deliveryFee = deliveryFeeConfigured ? Number(selectedStore?.delivery_fee_iqd) : 0;
+  const deliveryFeeConfigured = orderableStore && selected[0]?.delivery_fee_iqd !== null && selected[0]?.delivery_fee_iqd !== undefined;
+  const deliveryFee = deliveryFeeConfigured ? Number(selected[0]?.delivery_fee_iqd) : 0;
   const grandTotal = subtotal + deliveryFee;
   const count = selected.reduce((sum,p)=>sum+(cart[p.id]??0),0);
 
