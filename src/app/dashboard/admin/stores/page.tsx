@@ -1,6 +1,6 @@
 "use client";
 import {useCallback,useEffect,useState} from "react";
-import {RefreshCw,Store,CheckCircle2,XCircle,Clock3} from "lucide-react";
+import {RefreshCw,CheckCircle2,XCircle,Clock3} from "lucide-react";
 type StoreRow={id:string;owner_id:string;owner_email:string|null;name:string;slug:string;store_type:string;description:string|null;phone:string|null;address:string|null;status:string;admin_note:string|null;created_at:string};
 const labels:Record<string,string>={restaurant:"چێشتخانە",supermarket:"سوپەرمارکێت",produce_vendor:"فرۆشیاری بەرهەم",meat_seafood_vendor:"فرۆشیاری گۆشت و ماسی"};
 export default function AdminStoresPage(){
