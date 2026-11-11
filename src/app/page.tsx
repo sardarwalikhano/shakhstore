@@ -1,4 +1,4 @@
-import { cookies } from "next/headers";
+import { cookies } from "next/headers";\nimport Link from "next/link";
 import { createServerClient } from "@supabase/ssr";
 import { ArrowLeft, Bike, ShoppingBasket, Store, Utensils, Beef, ShieldCheck, UserCircle } from "lucide-react";
 
@@ -26,7 +26,7 @@ export default async function HomePage() {
     <main className="min-h-screen pb-16">
       <header className="border-b border-slate-200 bg-white">
         <div className="container-shell flex h-20 items-center justify-between gap-4">
-          <a href="/" className="flex items-center gap-3" aria-label="SHAKH STORE">
+          <Link href="/" className="flex items-center gap-3" aria-label="SHAKH STORE">
             <span className="grid size-11 place-items-center rounded-2xl bg-[#f28c28] text-xl font-black text-white">ش</span>
             <span>
               <span className="block text-lg font-black tracking-wide text-[#17243a]">SHAKH STORE</span>
@@ -38,7 +38,7 @@ export default async function HomePage() {
               <UserCircle size={17} /> پرۆفایل
             </a>
           ) : (
-            <a href="/login" className="inline-flex items-center gap-2 rounded-xl bg-[#2457a6] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#1c478b]">
+            <Link href="/login" className="inline-flex items-center gap-2 rounded-xl bg-[#2457a6] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#1c478b]">
               چوونەژوورەوە <ArrowLeft size={16} />
             </a>
           )}
