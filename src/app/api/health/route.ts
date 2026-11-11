@@ -11,9 +11,9 @@ export async function GET() {
   const publicSupabaseConfigured = Boolean(
     process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
   );
-  // Check all server dependencies internally, but never disclose whether a
-  // privileged service-role credential is configured through this public route.
-  const ready = publicSupabaseConfigured && Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY);
+  // This public route reports only public client configuration. It must not
+  // reveal whether a privileged service-role credential is configured.
+  const ready = publicSupabaseConfigured;
   const checks = { publicSupabaseConfigured };
 
   return NextResponse.json(
