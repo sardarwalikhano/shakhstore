@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
+import { createInAppNotifications } from "@/lib/server/notifications";
 
 export const runtime="nodejs";
 export const dynamic="force-dynamic";
@@ -35,11 +36,26 @@ export async function POST(request:Request){
   const {data:captain,error:captainError}=await c.db.auth.admin.getUserById(captainId);
   if(captainError)throw captainError;
   if(!captain.user||captain.user.app_metadata?.role!=="captain")return NextResponse.json({error:"Selected user is not an active captain account"},{status:400});
-  const {data:order,error:findError}=await c.db.from("orders").select("id,status,captain_id").eq("id",orderId).maybeSingle();
+  const {data:order,error:findError}=await c.db.from("orders").select("id,status,captain_id,customer_id,order_number").eq("id",orderId).maybeSingle();
   if(findError)throw findError;if(!order)return NextResponse.json({error:"Order not found"},{status:404});
   if(order.status!=="ready"||order.captain_id)return NextResponse.json({error:"Only ready and unassigned orders can be assigned"},{status:409});
   const {data,error}=await c.db.from("orders").update({captain_id:captainId,assigned_at:new Date().toISOString(),status:"assigned"}).eq("id",orderId).eq("status","ready").is("captain_id",null).select("id,status,captain_id,assigned_at").maybeSingle();
   if(error)throw error;if(!data)return NextResponse.json({error:"Order was assigned by another admin. Refresh the page."},{status:409});
+  const notifications = [{
+   userId: captainId,
+   type: "delivery" as const,
+   title: "داواکارییەکی نوێت بۆ دیاریکرا",
+   body: "داواکاری " + String(order.order_number ?? "") + " ئێستا لە لیستی گەیاندنەکانتە.",
+   data: { order_id: orderId, status: "assigned" },
+  }];
+  if (order.customer_id) notifications.push({
+   userId: order.customer_id,
+   type: "order" as const,
+   title: "کاپتن بۆ داواکارییەکەت دیاریکرا",
+   body: "داواکاری " + String(order.order_number ?? "") + " ئامادەی گەیاندنە.",
+   data: { order_id: orderId, status: "assigned" },
+  });
+  await createInAppNotifications(notifications);
   return NextResponse.json({success:true,order:data});
  }catch(e){console.error("Admin delivery assignment failed",e);return NextResponse.json({error:"Unable to assign captain"},{status:500});}
 }
