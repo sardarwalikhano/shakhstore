@@ -13,15 +13,20 @@
 
 ## Dependency security review
 
-- The project previously pinned `react` and `react-dom` to `19.1.7`. These were upgraded to `19.1.10` to address the React Server Components advisory GHSA-xqc2-xf4c-x3h3; the advisory lists 19.1.10 as patched for the 19.1 line.
-- Next.js remains on `15.5.29`. The Next.js project release lists 15.5.29 as containing its November 3, 2026 security fixes; do not downgrade below this patch release.
-- The previous Vercel install reported 8 dependency advisories (7 moderate, 1 high), before the React upgrade. A new install/audit result is required to know the remaining count. Do not use `npm audit fix --force` blindly.
+- `react` and `react-dom` are pinned to `19.1.10`, the patched 19.1 release for React Server Components advisory GHSA-xqc2-xf4c-x3h3.
+- Next.js remains pinned to `15.5.29`; avoid a major Next.js upgrade without a separate compatibility test.
+- The PostCSS advisory chain is addressed by an explicit `postcss: 8.5.23` override. The affected PostCSS advisories list 8.5.23 as patched.
+- The minimatch globparts amplification advisory is addressed by pinning `minimatch: 11.0.1` only beneath `@typescript-eslint/typescript-estree`; the rest of the dependency graph is not globally overridden.
+- The latest GitHub Actions audit on commit `9d9ab18086152ee7657585fe401baf408d80450c` reported **0 vulnerabilities** (0 low, 0 moderate, 0 high, 0 critical). It used the declared package overrides and did not run a forced major update.
+- Do not use `npm audit fix --force`; major framework upgrades require explicit compatibility testing.
 
 ## Build-time verification
 
-- Production Vercel build through commit `ab1561667971c915250a0843f708dfe2313a88fa` completed with state `READY`.
-- M11 code and dependency changes committed after that deployment require their own production build verification.
-- Previous lint output contained three `@next/next/no-img-element` warnings in the product and marketplace pages.
+- GitHub Actions run `43074976824` completed successfully for commit `9d9ab18086152ee7657585fe401baf408d80450c`.
+- ESLint completed without the previous `@next/next/no-img-element` warnings after product and marketplace images were migrated to `next/image`.
+- TypeScript completed successfully.
+- Next.js production build compiled successfully and generated all 22 static pages.
+- Vercel's latest confirmed READY production deployment remains commit `72856104ab5ea80e7958fd91009ff3bae31922f0`. Vercel reports `build-rate-limit` for newer commits, so the latest dependency overrides and image component changes are CI-verified but not yet confirmed live on the Vercel production deployment.
 
 
 ## Automated CI
