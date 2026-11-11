@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { RefreshCw, Save, Percent } from "lucide-react";
+import { Save, Percent } from "lucide-react";
 
 type Settings = { commission_rate_bps: number; updated_at: string; updated_by: string | null };
 
