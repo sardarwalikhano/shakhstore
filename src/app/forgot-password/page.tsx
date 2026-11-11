@@ -17,7 +17,7 @@ export default function ForgotPasswordPage() {
       const key=process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
       if(!url||!key) throw new Error("پەیوەندی Supabase ئامادە نییە.");
       const supabase=createBrowserClient(url,key);
-      const redirectTo=new URL("/auth/callback?next=/reset-password",window.location.origin).toString();
+      const redirectTo="https://daim-post.online/auth/callback?next=/reset-password";
       const {error}=await supabase.auth.resetPasswordForEmail(email.trim(),{redirectTo});
       if(error) throw error;
       setSuccess("ئەگەر ئەم ئیمەیڵە لە هەژمارێکدا تۆمارکرابێت، لینکی گۆڕینی وشەی نهێنی بۆت دەنێردرێت.");
