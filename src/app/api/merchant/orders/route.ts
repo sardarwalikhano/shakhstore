@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { createInAppNotifications } from "@/lib/server/notifications";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -53,7 +54,7 @@ export async function PATCH(request:Request) {
     const id=typeof v.order_id==="string"?v.order_id:"";
     const next=typeof v.status==="string"?v.status:"";
     if(!/^[0-9a-f-]{36}$/i.test(id)||!Object.values(NEXT_STATUS).includes(next)) return NextResponse.json({error:"Invalid order or status"},{status:400});
-    const {data:order,error:findError}=await c.db.from("orders").select("id,store_id,status").eq("id",id).maybeSingle();
+    const {data:order,error:findError}=await c.db.from("orders").select("id,store_id,status,customer_id,order_number").eq("id",id).maybeSingle();
     if(findError) throw findError;
     if(!order) return NextResponse.json({error:"Order not found"},{status:404});
     if(c.role!=="admin"&&c.role!=="super_admin") {
@@ -64,6 +65,16 @@ export async function PATCH(request:Request) {
     const {data,error}=await c.db.from("orders").update({status:next}).eq("id",id).eq("status",order.status).select("id,status,updated_at").maybeSingle();
     if(error) throw error;
     if(!data) return NextResponse.json({error:"Order changed concurrently. Refresh and try again."},{status:409});
+    const statusLabel: Record<string, string> = { confirmed: "دوکان داواکارییەکەی پشتڕاست کردەوە.", preparing: "ئامادەکردنی داواکارییەکەت دەستی پێکرد.", ready: "داواکارییەکەت ئامادەیە بۆ گەیاندن." };
+    if (order.customer_id) {
+      await createInAppNotifications([{
+        userId: order.customer_id,
+        type: "order",
+        title: "گۆڕانی دۆخی داواکاری",
+        body: "داواکاری " + String(order.order_number ?? "") + ": " + (statusLabel[next] ?? "دۆخی داواکاری نوێکرایەوە."),
+        data: { order_id: id, status: next },
+      }]);
+    }
     return NextResponse.json({success:true,order:data});
   } catch(e) {
     console.error("Merchant order update failed",e);
