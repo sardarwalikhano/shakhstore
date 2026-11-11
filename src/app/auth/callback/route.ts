@@ -35,6 +35,8 @@ export async function GET(request: Request) {
 
   const cookieStore = await cookies();
   const supabase = createServerClient(url, key, {
+    cookieOptions: { path: "/", sameSite: "lax", secure: true },
+    auth: { flowType: "pkce", persistSession: true, autoRefreshToken: true },
     cookies: {
       getAll: () => cookieStore.getAll(),
       setAll: (values) => values.forEach(({ name, value, options }) => cookieStore.set(name, value, options)),
