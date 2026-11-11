@@ -3,7 +3,7 @@ import {useCallback,useEffect,useState} from "react";
 import {RefreshCw,MapPin,PackageCheck,Truck} from "lucide-react";
 type Item={id:string;product_name:string;quantity:number};
 type Delivery={id:string;order_number:string;status:string;total_iqd:number;delivery_address:string;customer_name:string|null;customer_phone:string|null;customer_note:string|null;created_at:string;assigned_at:string|null;stores:{name:string}|{name:string}[]|null;order_items:Item[]};
-type Earnings={commission_rate_bps:number;accrued_total_iqd:number;paid_total_iqd:number;commissions:{id:string;order_id:string;delivery_fee_iqd:number;commission_iqd:number;status:string;completed_at:string;orders:{order_number:string}|{order_number:string}[]|null}[]};
+type Earnings={commission_rate_bps:number;accrued_total_iqd:number;paid_total_iqd:number;commissions:{id:string;order_id:string;delivery_fee_iqd:number;commission_rate_bps:number;commission_iqd:number;status:string;completed_at:string;orders:{order_number:string}|{order_number:string}[]|null}[]};
 const money=(n:number)=>new Intl.NumberFormat("en-US").format(n)+" د.ع";
 const storeName=(s:Delivery["stores"])=>Array.isArray(s)?s[0]?.name:s?.name;
 const commissionOrderNumber=(row:Earnings["commissions"][number])=>Array.isArray(row.orders)?row.orders[0]?.order_number:row.orders?.order_number;
