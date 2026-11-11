@@ -36,7 +36,6 @@ export default function MarketPage() {
   const selected = products.filter(p => (cart[p.id] ?? 0) > 0);
   const storeIds = [...new Set(selected.map(p=>p.store_id))];
   const subtotal = useMemo(()=>selected.reduce((sum,p)=>sum+p.price_iqd*(cart[p.id]??0),0),[selected,cart]);
-  const selectedStore = selected.length > 0 ? storeOf(selected[0]) : null;
   const orderableStore = storeIds.length === 1 && storeIds[0] !== null;
   const deliveryFeeConfigured = orderableStore && selected[0]?.delivery_fee_iqd !== null && selected[0]?.delivery_fee_iqd !== undefined;
   const deliveryFee = deliveryFeeConfigured ? Number(selected[0]?.delivery_fee_iqd) : 0;
