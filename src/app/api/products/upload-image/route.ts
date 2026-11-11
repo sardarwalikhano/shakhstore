@@ -14,6 +14,28 @@ const MIME_EXTENSIONS: Record<string, string> = {
   "image/avif": "avif",
 };
 
+async function hasValidImageSignature(file: File): Promise<boolean> {
+  const bytes = new Uint8Array(await file.slice(0, 32).arrayBuffer());
+  const ascii = String.fromCharCode(...bytes);
+
+  if (file.type === "image/jpeg") {
+    return bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
+  }
+  if (file.type === "image/png") {
+    return bytes.length >= 8 &&
+      bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47 &&
+      bytes[4] === 0x0d && bytes[5] === 0x0a && bytes[6] === 0x1a && bytes[7] === 0x0a;
+  }
+  if (file.type === "image/webp") {
+    return bytes.length >= 12 && ascii.slice(0, 4) === "RIFF" && ascii.slice(8, 12) === "WEBP";
+  }
+  if (file.type === "image/avif") {
+    return bytes.length >= 12 && ascii.slice(4, 8) === "ftyp" &&
+      (ascii.slice(8, 32).includes("avif") || ascii.slice(8, 32).includes("avis"));
+  }
+  return false;
+}
+
 export async function POST(request: Request) {
   try {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -55,6 +77,9 @@ export async function POST(request: Request) {
     }
     if (file.size <= 0 || file.size > 5 * 1024 * 1024) {
       return NextResponse.json({ error: "قەبارەی وێنە نابێت لە ٥ مێگابایت زیاتر بێت." }, { status: 413 });
+    }
+    if (!(await hasValidImageSignature(file))) {
+      return NextResponse.json({ error: "ناوەڕۆکی فایل و جۆری وێنە یەک ناگرنەوە." }, { status: 415 });
     }
 
     const db = createClient(url, service, { auth: { autoRefreshToken: false, persistSession: false } });
