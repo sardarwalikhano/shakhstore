@@ -2,12 +2,10 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Eye, EyeOff, LockKeyhole, Mail, Store } from "lucide-react";
 
 export default function LoginPage() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -22,7 +20,7 @@ export default function LoginPage() {
     if (code === "oauth") message = "Google چوونەژوورەوە ڕەتیکردەوە یان تەواو نەبوو. ";
     else if (code === "callback") message = "کۆدی گەڕانەوەی Google نەگەیشت. Redirect URL ـەکان بپشکنە. ";
     else if (code === "exchange") message = "کۆدی چوونەژوورەوە لە Supabase پشتڕاست نەکرایەوە. ";
-    else if (code === "config") message = "ڕێکخستنی Supabase لە سێرڤەر تەواو نییە. ";
+    else if (code === "config") message = "ڕێکخستنی Supabase لە سێرڤەر تەواو نییە. "; else if (code === "session") message = "Google گەڕایەوە، بەڵام Session دروست نەبوو. ";
     if (message) setError(message + (detail ? "هۆکاری ورد: " + detail : "تکایە ڕێکخستنی Google و Supabase بپشکنە."));
   }, []);
 
@@ -56,13 +54,15 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const supabase = getSupabase();
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim().toLowerCase(),
         password,
       });
       if (error) throw error;
-      router.replace("/dashboard");
-      router.refresh();
+      if (!data.session) throw new Error("سێشن دروست نەبوو. تکایە دووبارە هەوڵ بدە.");
+      // Reload the document so the server receives the newly written auth cookies.
+      window.location.replace("/dashboard");
+      return;
     } catch (err) {
       const message = err instanceof Error ? err.message : "";
       setError(message.includes("Invalid login credentials")
