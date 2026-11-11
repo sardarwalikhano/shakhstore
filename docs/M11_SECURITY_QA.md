@@ -6,6 +6,7 @@
 - Add HSTS, MIME-sniffing protection, frame denial, strict-origin referrer policy, DNS prefetch control, and a restrictive Permissions Policy.
 - Preserve camera and geolocation permissions for the same origin; disable microphone access at the browser policy layer.
 - Apply `Cache-Control: private, no-store, max-age=0` to API responses so authenticated and role-dependent payloads are not stored by shared caches.
+- Add a `src/middleware.ts` guard for all API mutations (`POST`, `PUT`, `PATCH`, `DELETE`). It rejects cross-site Fetch Metadata and validates `Origin` or `Referer` against the request origin. When browser metadata is absent, mutations fail closed unless Fetch Metadata explicitly says `same-origin`. Safe methods (`GET`, `HEAD`, `OPTIONS`) are unaffected.
 - Public health responses no longer reveal whether the privileged Supabase service-role key is configured.
 - Merchant product updates re-apply owner and store filters in the database UPDATE predicate rather than relying only on a preceding authorization read.
 - Merchant order-status updates re-apply the set of owned store IDs in the UPDATE predicate and continue to enforce the expected previous order status.
@@ -26,18 +27,18 @@
 - ESLint completed without the previous `@next/next/no-img-element` warnings after product and marketplace images were migrated to `next/image`.
 - TypeScript completed successfully.
 - Next.js production build compiled successfully and generated all 22 static pages.
-- Vercel's latest confirmed READY production deployment remains commit `72856104ab5ea80e7958fd91009ff3bae31922f0`. Vercel reports `build-rate-limit` for newer commits, so the latest dependency overrides and image component changes are CI-verified but not yet confirmed live on the Vercel production deployment.
-
+- Vercel's latest previously confirmed READY production deployment was commit `72856104ab5ea80e7958fd91009ff3bae31922f0`. New commits must be checked against Vercel deployment records before claiming they are live.
 
 ## Automated CI
 
-The repository now includes `.github/workflows/ci.yml`. On pushes to `main` and pull requests targeting `main`, GitHub Actions installs dependencies, reports the npm audit severity summary, runs ESLint, runs TypeScript, and creates a production build using placeholder-only Supabase environment values. No production secrets are placed in the workflow.
+The repository includes `.github/workflows/ci.yml`. On pushes to `main` and pull requests targeting `main`, GitHub Actions installs dependencies, reports the npm audit severity summary, runs ESLint, runs TypeScript, and creates a production build using placeholder-only Supabase environment values. No production secrets are placed in the workflow.
 
 ## Required production QA
 
 - Verify HTTPS redirects and HSTS on the canonical domain and all production subdomains.
 - Confirm API responses include `Cache-Control: private, no-store, max-age=0`.
 - Confirm `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, and the configured referrer/permissions policies.
+- From a different site, attempt API `POST`, `PATCH`, and `DELETE` requests; expect 403. Verify same-origin app mutations still succeed.
 - As a merchant, attempt to update a product belonging to another store; expect 403 or 409 and no database change.
 - As a merchant, attempt to advance an order for a store not owned by the account; expect 403 and no database change.
 - As a customer, verify order/notification APIs return only the authenticated user's own records.
