@@ -6,7 +6,8 @@ import { createClient } from "@supabase/supabase-js";
 export const runtime="nodejs";
 export const dynamic="force-dynamic";
 const CATEGORIES=["food","grocery","produce","meat_seafood","drinks","household","other"] as const;
-const MERCHANT_ROLES=["restaurant","supermarket","produce_vendor","meat_seafood_vendor"] as const;\ntype LegacyProduct = { id:string; store_id:null; owner_id:string; name:string; description:string|null; category:string; price_iqd:number; image_url:string|null; stock_quantity:number; created_at:string; stores:null };
+const MERCHANT_ROLES=["restaurant","supermarket","produce_vendor","meat_seafood_vendor"] as const;
+type LegacyProduct = { id:string; store_id:null; owner_id:string; name:string; description:string|null; category:string; price_iqd:number; image_url:string|null; stock_quantity:number; created_at:string; stores:null };
 async function context(){
  const url=process.env.NEXT_PUBLIC_SUPABASE_URL,anon=process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,service=process.env.SUPABASE_SERVICE_ROLE_KEY;
  if(!url||!anon||!service)return {response:NextResponse.json({error:"Server configuration is incomplete"},{status:500})};
