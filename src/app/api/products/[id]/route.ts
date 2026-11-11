@@ -23,11 +23,13 @@ export async function PATCH(request:Request,{params}:Params){
   const {id}=await params;if(!/^[0-9a-f-]{36}$/i.test(id))return NextResponse.json({error:"Invalid product ID"},{status:400});
   const {data:current,error:findError}=await c.db.from("products").select("id,owner_id,store_id").eq("id",id).maybeSingle();
   if(findError)throw findError;if(!current)return NextResponse.json({error:"Product not found"},{status:404});
+  let merchantStoreId: string | null = null;
   if(c.role!=="super_admin"&&c.role!=="admin"){
    if(current.owner_id!==c.user.id)return NextResponse.json({error:"Forbidden"},{status:403});
    const {data:store,error:storeError}=await c.db.from("stores").select("id").eq("owner_id",c.user.id).eq("status","approved").maybeSingle();
    if(storeError)throw storeError;
    if(!store||current.store_id!==store.id)return NextResponse.json({error:"Store inactive or product not owned"},{status:403});
+   merchantStoreId = store.id;
   }
   const raw:unknown=await request.json();if(!raw||typeof raw!=="object")return NextResponse.json({error:"Invalid request"},{status:400});
   const v=raw as Record<string,unknown>,patch:Record<string,unknown>={};
@@ -40,8 +42,16 @@ export async function PATCH(request:Request,{params}:Params){
   if("image_url" in v){if(v.image_url===null||v.image_url==="")patch.image_url=null;else if(typeof v.image_url==="string"){try{const u=new URL(v.image_url);if(u.protocol!=="https:"||u.href.length>2048)throw new Error();patch.image_url=u.href;}catch{return NextResponse.json({error:"Image URL must use HTTPS"},{status:400});}}else return NextResponse.json({error:"Invalid image URL"},{status:400});}
   if("sku" in v)patch.sku=typeof v.sku==="string"&&v.sku.trim()?v.sku.trim().slice(0,80):null;
   if(!Object.keys(patch).length)return NextResponse.json({error:"No changes supplied"},{status:400});
-  const {data,error}=await c.db.from("products").update(patch).eq("id",id).select("id,name,description,category,price_iqd,image_url,sku,stock_quantity,is_active,updated_at").single();
-  if(error)throw error;return NextResponse.json({product:data});
+  let updateQuery = c.db.from("products").update(patch).eq("id",id);
+  // Re-apply merchant ownership in the UPDATE predicate. The earlier read is
+  // only for authorization feedback; it is not the final write authorization.
+  if (merchantStoreId) {
+   updateQuery = updateQuery.eq("owner_id",c.user.id).eq("store_id",merchantStoreId);
+  }
+  const {data,error}=await updateQuery.select("id,name,description,category,price_iqd,image_url,sku,stock_quantity,is_active,updated_at").maybeSingle();
+  if(error)throw error;
+  if(!data)return NextResponse.json({error:"Product changed or ownership is no longer valid. Refresh and try again."},{status:409});
+  return NextResponse.json({product:data});
  }catch(e){console.error("Product PATCH failed",e);return NextResponse.json({error:"Unable to update product"},{status:409});}
 }
 export async function DELETE(_request:Request,{params}:Params){
