@@ -24,9 +24,11 @@
 
 ## Build-time verification
 
-- Commit `480203d55f05707800e2d429eb6ecfc4bad99e7d` passed GitHub Actions run `43083174727`: zero npm audit findings, ESLint, TypeScript, and Next.js production build with 22/22 static pages.
-- Vercel deployment `dpl_ETgQM4PdsMtYmaVwrvGyayuLvNLi` reached `READY` for production commit `480203d55f05707800e2d429eb6ecfc4bad99e7d`. The deployment aliases include `daim-post.online` and `www.daim-post.online`.
-- Customer cancellation in migration `0011` requires the new migration to be applied to the intended Supabase project before the new UI action can succeed. It is not considered deployed at the database layer until verified there.
+- GitHub Actions run `43089679037` completed successfully for code commit `c26ca438d93769bd3806880147b457f0fae4d573`.
+- The dependency audit reported zero vulnerabilities; ESLint and TypeScript completed successfully.
+- The Next.js production build completed successfully and generated all 22 static pages, including the new `/api/orders/cancel` route.
+- Vercel production deployment `dpl_9b2HwG7zpHdP5Ui3WdN4m9aBvnAa` reached `READY` for commit `c26ca438d93769bd3806880147b457f0fae4d573`.
+- The migration `0011_customer_order_cancellation.sql` must still be applied to the intended Supabase project before cancellation can work against its database. Vercel readiness does not apply Supabase migrations.
 
 ## Automated CI
 
