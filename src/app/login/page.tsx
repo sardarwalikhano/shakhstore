@@ -15,11 +15,15 @@ export default function LoginPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    const code = new URLSearchParams(window.location.search).get("error");
-    if (code === "oauth") setError("Google چوونەژوورەوە ڕەتیکردەوە یان تەواو نەبوو. ڕێکخستنی Google Provider لە Supabase بپشکنە.");
-    else if (code === "callback") setError("کۆدی گەڕانەوەی Google نەگەیشت. Redirect URL ـەکان لە Supabase و Google بپشکنە.");
-    else if (code === "exchange") setError("کۆدی چوونەژوورەوە لە Supabase پشتڕاست نەکرایەوە. تکایە دووبارە هەوڵ بدە.");
-    else if (code === "config") setError("ڕێکخستنی Supabase لە سێرڤەر تەواو نییە.");
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("error");
+    const detail = params.get("detail");
+    let message = "";
+    if (code === "oauth") message = "Google چوونەژوورەوە ڕەتیکردەوە یان تەواو نەبوو. ";
+    else if (code === "callback") message = "کۆدی گەڕانەوەی Google نەگەیشت. Redirect URL ـەکان بپشکنە. ";
+    else if (code === "exchange") message = "کۆدی چوونەژوورەوە لە Supabase پشتڕاست نەکرایەوە. ";
+    else if (code === "config") message = "ڕێکخستنی Supabase لە سێرڤەر تەواو نییە. ";
+    if (message) setError(message + (detail ? "هۆکاری ورد: " + detail : "تکایە ڕێکخستنی Google و Supabase بپشکنە."));
   }, []);
 
   function getSupabase() {
