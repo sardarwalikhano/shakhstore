@@ -576,6 +576,11 @@ revoke all on function public.post_wallet_transfer(uuid, uuid, bigint, text, tex
 grant execute on function public.post_wallet_transfer(uuid, uuid, bigint, text, text, text, text)
   to service_role;
 
+revoke all on function public.settle_cash_referral_reward(uuid, uuid, bigint, text, text)
+  from public, anon, authenticated;
+grant execute on function public.settle_cash_referral_reward(uuid, uuid, bigint, text, text)
+  to service_role;
+
 revoke all on function public.review_wallet_cashout(uuid, uuid, text, text)
   from public, anon, authenticated;
 grant execute on function public.review_wallet_cashout(uuid, uuid, text, text)
@@ -590,6 +595,8 @@ comment on table public.wallet_accounts is
   'Internal IQD ledger accounts only. Account balances are platform bookkeeping units, not bank balances.';
 comment on function public.post_wallet_transfer(uuid, uuid, bigint, text, text, text, text) is
   'Service-role-only internal transfer. Enforces pending and approved-unsettled cashout reservations before debiting the sender wallet.';
+comment on function public.settle_cash_referral_reward(uuid, uuid, bigint, text, text) is
+  'Service-role-only referral reward settlement. Enforces pending and approved-unsettled cashout reservations before debiting the post owner wallet.';
 comment on function public.review_wallet_cashout(uuid, uuid, text, text) is
   'Service-role-only workflow review. Approval reserves the request; it does not debit a wallet or send money.';
 comment on function public.mark_wallet_cashout_paid(uuid, uuid) is
