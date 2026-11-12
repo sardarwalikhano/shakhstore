@@ -24,7 +24,7 @@ begin
           or (
             sender_reference is not null
             and sender_reference_normalized =
-              upper(regexp_replace(btrim(sender_reference), '\\s+', '', 'g'))
+              upper(regexp_replace(btrim(sender_reference), '[[:space:]]+', '', 'g'))
           )
         )
         and (
