@@ -11,7 +11,7 @@ export async function requireDashboardUser(allowedRoles?: readonly string[]) {
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!url || !anonKey) {
-    redirect("/login?error=configuration");
+    redirect("/login?error=config");
   }
 
   const cookieStore = await cookies();
