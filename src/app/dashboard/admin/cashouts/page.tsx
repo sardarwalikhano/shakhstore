@@ -114,9 +114,9 @@ export default function AdminCashoutsPage() {
         {notice && <p role="status" className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">{notice}</p>}
 
         <div className="mb-4 flex flex-wrap gap-2">
-          {(["pending", "approved", "rejected", "all"] as const).map((value) => (
+          {(["pending", "approved", "paid", "rejected", "all"] as const).map((value) => (
             <button key={value} onClick={() => setFilter(value)} className={`rounded-full px-4 py-2 text-sm font-bold ${filter === value ? "bg-slate-900 text-white" : "border border-slate-200 bg-white text-slate-600"}`}>
-              {value === "pending" ? "چاوەڕوان" : value === "approved" ? "پەسەندکراو" : value === "rejected" ? "ڕەتکراوە" : "هەموو"}
+              {value === "pending" ? "چاوەڕوان" : value === "approved" ? "پەسەندکراو" : value === "paid" ? "پارەدراو" : value === "rejected" ? "ڕەتکراوە" : "هەموو"}
             </button>
           ))}
         </div>
@@ -153,8 +153,8 @@ export default function AdminCashoutsPage() {
                   <label className="mb-2 block text-sm font-bold text-slate-700" htmlFor={`note-${item.id}`}>تێبینی Super Admin (ئارەزوومەندانە)</label>
                   <textarea id={`note-${item.id}`} value={notes[item.id] ?? ""} onChange={(event) => setNotes((current) => ({ ...current, [item.id]: event.target.value }))} rows={2} maxLength={1000} className="w-full rounded-xl border border-slate-200 p-3 text-sm outline-none focus:border-orange-400" placeholder="تێبینی بنووسە..." />
                   <div className="mt-3 flex flex-wrap gap-2">
-                    {item.status === "pending" && <button onClick={() => void review(item.id, "approve")} disabled={busyId !== null} className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-3 text-sm font-bold text-white disabled:opacity-50"><CheckCircle2 size={17} />{busyId === item.id ? "تکایە چاوەڕێ بکە..." : "پەسەندکردن"}</button>
-                    <button onClick={() => void review(item.id, "reject")} disabled={busyId !== null} className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-5 py-3 text-sm font-bold text-white disabled:opacity-50"><XCircle size={17} />ڕەتکردنەوە</button>}
+                    {item.status === "pending" && <button onClick={() => void review(item.id, "approve")} disabled={busyId !== null} className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-3 text-sm font-bold text-white disabled:opacity-50"><CheckCircle2 size={17} />{busyId === item.id ? "تکایە چاوەڕێ بکە..." : "پەسەندکردن"}</button>}
+                    {item.status === "pending" && <button onClick={() => void review(item.id, "reject")} disabled={busyId !== null} className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-5 py-3 text-sm font-bold text-white disabled:opacity-50"><XCircle size={17} />ڕەتکردنەوە</button>}
                     {item.status === "approved" && <button onClick={() => void review(item.id, "mark_paid")} disabled={busyId !== null} className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white disabled:opacity-50">پارە نێردرا / تەواوبوو</button>}
                   </div>
                 </div>
