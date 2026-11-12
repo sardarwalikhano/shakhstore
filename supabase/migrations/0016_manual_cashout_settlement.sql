@@ -143,7 +143,13 @@ $$;
 
 -- Call only after Super Admin has physically sent the payout outside SHAKH.
 -- This is the sole point that debits the user's wallet and posts the 75/25 split.
-create or replace function public.mark_wallet_cashout_paid(
+-- M14 defined this RPC as RETURNS void. PostgreSQL cannot change a
+-- function's return type with CREATE OR REPLACE, so drop the exact overload
+-- before recreating it with RETURNS uuid. Existing dependencies are API calls
+-- by RPC name and do not create PostgreSQL object dependencies.
+drop function if exists public.mark_wallet_cashout_paid(uuid, uuid);
+
+create function public.mark_wallet_cashout_paid(
   p_request_id uuid,
   p_admin_user_id uuid
 )
