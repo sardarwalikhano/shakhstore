@@ -19,6 +19,8 @@ const dashboardAuthPath = resolve(process.cwd(), "src/lib/server/dashboard-auth.
 const dashboardAuth = readFileSync(dashboardAuthPath, "utf8");
 const dashboardLayoutPath = resolve(process.cwd(), "src/app/dashboard/layout.tsx");
 const dashboardLayout = readFileSync(dashboardLayoutPath, "utf8");
+const adminLayoutPath = resolve(process.cwd(), "src/app/dashboard/admin/layout.tsx");
+const adminLayout = readFileSync(adminLayoutPath, "utf8");
 const topupsAdminLayoutPath = resolve(process.cwd(), "src/app/dashboard/admin/wallet-topups/layout.tsx");
 const topupsAdminLayout = readFileSync(topupsAdminLayoutPath, "utf8");
 const cashoutsAdminLayoutPath = resolve(process.cwd(), "src/app/dashboard/admin/cashouts/layout.tsx");
@@ -85,6 +87,8 @@ const checks = [
   ["dashboard guard verifies the current Supabase user server-side", dashboardAuth.includes("supabase.auth.getUser()") && dashboardAuth.includes('redirect("/login")')],
   ["missing Supabase configuration uses the supported login error code", dashboardAuth.includes('redirect("/login?error=config")')],
   ["all dashboard routes use a force-dynamic server guard", dashboardLayout.includes('dynamic = "force-dynamic"') && dashboardLayout.includes("await requireDashboardUser()")],
+  ["admin dashboard pages are restricted to trusted admin roles", adminLayout.includes('requireDashboardUser(["admin", "super_admin"])')],
+  ["admin route layout is force-dynamic", adminLayout.includes('dynamic = "force-dynamic"')],
   ["top-up review page is restricted to super_admin", topupsAdminLayout.includes('requireDashboardUser(["super_admin"])')],
   ["cashout management page is restricted to super_admin", cashoutsAdminLayout.includes('requireDashboardUser(["super_admin"])')],
   ["cashout management link is shown only in the super-admin card group", dashboardPage.includes('...(role==="super_admin"?[{title:"بەڕێوەبردنی Cashout"') && !dashboardPage.includes('...(admin?[{title:"بەڕێوەبردنی Cashout"')],
