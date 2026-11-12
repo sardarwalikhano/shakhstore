@@ -25,7 +25,8 @@ create unique index if not exists wallet_accounts_payout_clearing_uq
   on public.wallet_accounts(currency)
   where owner_type = 'payout_clearing';
 
--- Approved-but-unpaid requests continue reserving their full amount.
+-- Pending and newly approved-but-unpaid requests reserve the full amount.
+-- Legacy approved requests that already have a ledger settlement are not reserved again.
 create or replace function public.request_wallet_cashout(
   p_amount_iqd bigint,
   p_user_note text default null
@@ -63,7 +64,11 @@ begin
   select coalesce(sum(requested_amount_iqd), 0)
     into v_reserved
   from public.wallet_cashout_requests
-  where user_id = v_user_id and status in ('pending', 'approved');
+  where user_id = v_user_id
+    and (
+      status = 'pending'
+      or (status = 'approved' and wallet_transaction_id is null)
+    );
 
   if p_amount_iqd > v_balance - v_reserved then
     raise exception 'Insufficient available reward balance';
@@ -286,6 +291,11 @@ begin
   return v_transaction_id;
 end;
 $$;
+
+-- M03 added this legacy check, which requires every approved request to have
+-- already been settled. Remove it so M16 can represent approved-but-unpaid.
+alter table public.wallet_cashout_requests
+  drop constraint if exists cashout_approved_has_transaction;
 
 -- Approved is a reservation, not a financial settlement.
 alter table public.wallet_cashout_requests
