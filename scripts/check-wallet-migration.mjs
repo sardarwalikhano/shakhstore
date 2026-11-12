@@ -6,6 +6,13 @@ const migrationPath = resolve(
   "supabase/migrations/0016_manual_cashout_settlement.sql",
 );
 const sql = readFileSync(migrationPath, "utf8");
+const topupMigrationPath = resolve(
+  process.cwd(),
+  "supabase/migrations/20261112183000_wallet_topup_duplicate_protection.sql",
+);
+const topupSql = readFileSync(topupMigrationPath, "utf8");
+const topupApiPath = resolve(process.cwd(), "src/app/api/wallet/topups/route.ts");
+const topupApi = readFileSync(topupApiPath, "utf8");
 
 function functionBody(name) {
   const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -50,6 +57,15 @@ const checks = [
   ["legacy approved-has-transaction constraint is removed", sql.includes("drop constraint if exists cashout_approved_has_transaction;")],
   ["restricted RPCs are explicitly service-role-only", ["post_wallet_transfer", "settle_cash_referral_reward", "review_wallet_cashout", "mark_wallet_cashout_paid"].every((name) => new RegExp(`grant execute on function public\\.${name}\\([^;]+to service_role;`, "i").test(sql))],
   ["payout clearing is not treated as bank balance", /Never interpret this balance as bank funds|not a bank balance/i.test(sql)],
+  ["top-up migration stores SHA-256 receipt hashes", /add column if not exists receipt_sha256 text/i.test(topupSql)],
+  ["top-up migration stores normalized payment references", /add column if not exists sender_reference_normalized text/i.test(topupSql)],
+  ["receipt hashes have a partial unique index", /create unique index if not exists wallet_topup_receipt_sha256_uidx[\\s\\S]+?where receipt_sha256 is not null/i.test(topupSql)],
+  ["provider-scoped normalized references have a unique index", /create unique index if not exists wallet_topup_payment_reference_uidx[\\s\\S]+?payment_method, sender_reference_normalized/i.test(topupSql)],
+  ["pending requests require integrity metadata", /status <> 'pending'[\\s\\S]+?receipt_sha256 is not null[\\s\\S]+?sender_reference_normalized is not null/i.test(topupSql)],
+  ["top-up approval refuses legacy rows without integrity metadata", /v_request\\.receipt_sha256 is null[\\s\\S]+?v_request\\.sender_reference_normalized is null/i.test(topupSql)],
+  ["top-up API computes a SHA-256 digest", /createHash\\("sha256"\\)/i.test(topupApi)],
+  ["top-up API requires and normalizes payment reference", /normalizedReference = senderReference\\.replace\\([\\s\\S]+?sender_reference_normalized: normalizedReference/i.test(topupApi)],
+  ["duplicate database keys return HTTP 409", /errorCode === "23505"[\\s\\S]+?status: 409/i.test(topupApi)],
 ];
 
 let failures = 0;
