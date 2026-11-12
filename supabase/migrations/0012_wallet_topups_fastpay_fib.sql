@@ -56,7 +56,9 @@ declare
   v_transaction_id uuid;
 begin
   if p_admin_user_id is null then raise exception 'Admin identity required'; end if;
-  if p_decision not in ('approve','reject') then raise exception 'Invalid decision'; end if;
+  if p_decision is null or p_decision not in ('approve','reject') then
+    raise exception 'Invalid decision';
+  end if;
 
   select * into v_request from public.wallet_topup_requests
     where id = p_request_id for update;
