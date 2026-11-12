@@ -24,7 +24,7 @@ The feature branch contains these additive migrations:
 3. `0014_cashout_payout_destination_and_completion.sql` — FastPay/FIB destination and explicit paid status.
 4. `0015_cashout_external_asset_accounting.sql` — intermediate accounting correction; superseded for the manual-payout workflow by M16.
 5. `0016_manual_cashout_settlement.sql` — separates approval from physical payout and posts the internal 75/25 settlement only after Super Admin confirms the manual transfer.
-6. `20261112183000_wallet_topup_duplicate_protection.sql` — stores receipt SHA-256 and normalized provider payment references with database-enforced unique indexes; protects legacy top-up review.
+6. `20261112183000_wallet_topup_duplicate_protection.sql` — stores receipt SHA-256 and normalized provider payment references with database-enforced unique indexes; protects legacy top-up review. Its PostgreSQL 17 integration suite runs in CI against an isolated temporary database.
 
 These migrations depend on the existing wallet, cashout, storage, and commission schema. Do not apply them in isolation or assume the production migration history is complete. The production project has previously shown existing application tables while its migration history endpoint returned no applied migrations. Reconcile the live schema, functions, constraints, storage policies, and migration history before applying anything.
 
@@ -105,6 +105,7 @@ Before enabling these features, verify:
 - [ ] Signed-out request receives HTTP 401.
 - [ ] Top-up receipt review credits exactly once; reject credits nothing.
 - [ ] Duplicate top-up receipt hashes and external payment references are rejected at database level, including concurrent submissions.
+- [ ] The PostgreSQL 17 integration job applies M17 to a fresh fixture and verifies duplicate rejection, legacy approval guard, successful one-time credit, and RPC grants.
 - [ ] Legacy pending top-up requests without M17 integrity metadata are rejected and resubmitted, not approved.
 - [ ] Cashout rejection releases the reservation without debiting the wallet.
 - [ ] Cashout approval leaves user/platform/payout-clearing balances and ledger entries unchanged.
