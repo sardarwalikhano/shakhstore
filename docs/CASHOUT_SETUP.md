@@ -37,6 +37,19 @@ Before a production change:
 
 Do not edit historical migrations. All corrections in this feature are additive.
 
+### Migration runner compatibility gate
+
+The repository currently uses four-digit migration prefixes (`0001`–`0016`) rather than the timestamped `<timestamp>_<name>.sql` format documented for the Supabase CLI. It also contains two files with the same `0004` prefix (`0004_in_app_notifications.sql` and `0004_store_profiles_and_onboarding.sql`). The repository does not currently include `supabase/config.toml`, and the GitHub CI workflow runs application lint/typecheck/build but does not run Supabase migration commands.
+
+This means a green application CI and a READY Vercel Preview do **not** prove the SQL migration chain can be applied through the Supabase CLI. Before any migration rollout:
+
+- Establish a migration baseline from the exact live production schema; do not infer it from the empty migration-history list.
+- Define a one-time migration-history conversion plan with unique, ordered timestamp identifiers while preserving every SQL change and dependency. Do not rename or reorder files ad hoc.
+- Run the complete migration chain on a separate staging project and verify `supabase migration list` plus schema/function/constraint diffs before considering production.
+- Use an explicitly selected staging target for CLI commands. Current Supabase CLI v3 defaults database commands to the local stack; hosted changes require explicit remote targeting and confirmation.
+
+References: [Supabase migration file format and history](https://supabase.com/docs/reference/cli/supabase-migration-list), [Supabase CLI v3 migration guide](https://supabase.com/docs/guides/local-development/cli/migrating-to-v3).
+
 ## 3. Super Admin authorization
 
 The APIs check the trusted `auth.users.raw_app_meta_data` claim `role = super_admin`. They deliberately do not trust `user_metadata`, because users can generally edit their own user metadata.
