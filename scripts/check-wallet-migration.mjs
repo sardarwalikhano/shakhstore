@@ -27,6 +27,13 @@ const cashoutsAdminLayoutPath = resolve(process.cwd(), "src/app/dashboard/admin/
 const cashoutsAdminLayout = readFileSync(cashoutsAdminLayoutPath, "utf8");
 const dashboardPagePath = resolve(process.cwd(), "src/app/dashboard/page.tsx");
 const dashboardPage = readFileSync(dashboardPagePath, "utf8");
+const commissionAdminApi = readFileSync(resolve(process.cwd(), "src/app/api/admin/captain-commission/route.ts"), "utf8");
+const deliveriesAdminApi = readFileSync(resolve(process.cwd(), "src/app/api/admin/deliveries/route.ts"), "utf8");
+const storesAdminApi = readFileSync(resolve(process.cwd(), "src/app/api/admin/stores/route.ts"), "utf8");
+const usersAdminApi = readFileSync(resolve(process.cwd(), "src/app/api/admin/users/route.ts"), "utf8");
+const cashoutsAdminApi = readFileSync(resolve(process.cwd(), "src/app/api/admin/cashouts/route.ts"), "utf8");
+const topupsAdminApi = readFileSync(resolve(process.cwd(), "src/app/api/admin/wallet-topups/route.ts"), "utf8");
+
 
 function functionBody(name) {
   const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -91,6 +98,13 @@ const checks = [
   ["admin route layout is force-dynamic", adminLayout.includes('dynamic = "force-dynamic"')],
   ["top-up review page is restricted to super_admin", topupsAdminLayout.includes('requireDashboardUser(["super_admin"])')],
   ["cashout management page is restricted to super_admin", cashoutsAdminLayout.includes('requireDashboardUser(["super_admin"])')],
+  ["captain commission API permits only trusted admin roles", commissionAdminApi.includes('user.app_metadata?.role') && commissionAdminApi.includes('role !== "admin" && role !== "super_admin"')],
+  ["delivery assignment API permits only trusted admin roles", deliveriesAdminApi.includes('user.app_metadata?.role!=="super_admin"&&user.app_metadata?.role!=="admin"')],
+  ["store review API permits only trusted admin roles", storesAdminApi.includes('user.app_metadata?.role!=="super_admin"&&user.app_metadata?.role!=="admin"')],
+  ["user role administration API requires super_admin", usersAdminApi.includes('user.app_metadata?.role !== "super_admin"')],
+  ["cashout API requires super_admin", cashoutsAdminApi.includes('user.app_metadata?.role !== "super_admin"')],
+  ["top-up review API requires super_admin", topupsAdminApi.includes('user.app_metadata?.role !== "super_admin"')],
+
   ["cashout management link is shown only in the super-admin card group", dashboardPage.includes('...(role==="super_admin"?[{title:"بەڕێوەبردنی Cashout"') && !dashboardPage.includes('...(admin?[{title:"بەڕێوەبردنی Cashout"')],
 ];
 
