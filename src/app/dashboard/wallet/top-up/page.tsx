@@ -86,6 +86,7 @@ export default function WalletTopupPage() {
           <div className="mt-4 space-y-3">{requests.map(item=><article key={item.id} className="rounded-xl border border-slate-200 p-4">
             <div className="flex flex-wrap items-center justify-between gap-2"><strong>{money(item.amount_iqd)}</strong><span className={`rounded-full px-3 py-1 text-xs font-bold ${item.status==="pending"?"bg-amber-100 text-amber-800":item.status==="approved"?"bg-emerald-100 text-emerald-800":"bg-red-100 text-red-800"}`}>{item.status==="pending"?"چاوەڕوان":item.status==="approved"?"پەسەندکراو":"ڕەتکراوە"}</span></div>
             <p className="mt-2 text-sm text-slate-600">{item.payment_method==="fastpay"?"FastPay":"FIB"} · {new Date(item.created_at).toLocaleString("ckb-IQ")}</p>
+            {item.sender_reference && <p className="mt-1 text-xs text-slate-500">Reference: <span dir="ltr" className="font-mono">{item.sender_reference}</span></p>}
             {item.admin_note && <p className="mt-2 text-sm text-slate-600">تێبینی: {item.admin_note}</p>}
           </article>)}</div>}
       </section>
