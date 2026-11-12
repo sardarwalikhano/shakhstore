@@ -13,6 +13,8 @@ const topupMigrationPath = resolve(
 const topupSql = readFileSync(topupMigrationPath, "utf8");
 const topupApiPath = resolve(process.cwd(), "src/app/api/wallet/topups/route.ts");
 const topupApi = readFileSync(topupApiPath, "utf8");
+const topupPagePath = resolve(process.cwd(), "src/app/dashboard/wallet/top-up/page.tsx");
+const topupPage = readFileSync(topupPagePath, "utf8");
 
 function functionBody(name) {
   const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -67,6 +69,8 @@ const checks = [
   ["top-up API computes a SHA-256 digest", topupApi.includes('createHash("sha256")')],
   ["top-up API requires and normalizes payment reference", topupApi.includes("normalizedReference = senderReference.replace") && topupApi.includes("sender_reference_normalized: normalizedReference")],
   ["duplicate database keys return HTTP 409", topupApi.includes('errorCode === "23505"') && topupApi.includes("status: 409")],
+  ["top-up UI requires external transaction reference", /topup-reference[\\s\\S]+?required/.test(topupPage)],
+  ["top-up history displays submitted payment reference", topupPage.includes("item.sender_reference") && topupPage.includes("Reference:")],
 ];
 
 let failures = 0;
