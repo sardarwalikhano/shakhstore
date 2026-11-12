@@ -43,6 +43,13 @@ const captainDeliveriesApi = readFileSync(resolve(process.cwd(), "src/app/api/ca
 const captainEarningsApi = readFileSync(resolve(process.cwd(), "src/app/api/captain/earnings/route.ts"), "utf8");
 const merchantOrdersApi = readFileSync(resolve(process.cwd(), "src/app/api/merchant/orders/route.ts"), "utf8");
 const storesApi = readFileSync(resolve(process.cwd(), "src/app/api/stores/route.ts"), "utf8");
+const middleware = readFileSync(resolve(process.cwd(), "src/middleware.ts"), "utf8");
+const ordersApi = readFileSync(resolve(process.cwd(), "src/app/api/orders/route.ts"), "utf8");
+const cancelOrderApi = readFileSync(resolve(process.cwd(), "src/app/api/orders/cancel/route.ts"), "utf8");
+const notificationsApi = readFileSync(resolve(process.cwd(), "src/app/api/notifications/route.ts"), "utf8");
+const cashoutsApi = readFileSync(resolve(process.cwd(), "src/app/api/wallet/cashouts/route.ts"), "utf8");
+const captainDeliveriesApiSource = readFileSync(resolve(process.cwd(), "src/app/api/captain/deliveries/route.ts"), "utf8");
+
 
 
 
@@ -124,6 +131,17 @@ const checks = [
   ["captain earnings API verifies trusted captain role", captainEarningsApi.includes('user.app_metadata?.role !== "captain"')],
   ["merchant orders API checks trusted merchant or admin role", merchantOrdersApi.includes("MERCHANT_ROLES.includes(role)") && merchantOrdersApi.includes('role!=="admin"&&role!=="super_admin"')],
   ["store API binds submitted store type to the trusted merchant role", storesApi.includes('TYPES.includes(role as typeof TYPES[number])') && storesApi.includes("storeType!==role")],
+  ["API mutation middleware blocks cross-site write requests", middleware.includes('new Set(["GET", "HEAD", "OPTIONS"])') && middleware.includes('fetchSite === "cross-site"') && middleware.includes("Cross-origin API mutation is not allowed")],
+  ["API mutation middleware validates Origin and Referer", middleware.includes('request.headers.get("origin")') && middleware.includes('request.headers.get("referer")')],
+  ["customer order history is scoped to the authenticated user", ordersApi.includes('.eq("customer_id", c.user.id)')],
+  ["only customers can place orders", ordersApi.includes('if (c.role !== "customer")')],
+  ["order cancellation checks customer ownership before RPC", cancelOrderApi.includes('.eq("customer_id", c.user.id)') && cancelOrderApi.includes('role !== "customer"')],
+  ["notification reads and updates are scoped to the authenticated user", (notificationsApi.match(/\.eq\("user_id", auth\.user\.id\)/g) ?? []).length >= 2],
+  ["cashout history is scoped to the authenticated user's wallet", cashoutsApi.includes('.eq("user_id", c.user.id)')],
+  ["top-up history and new requests use the authenticated user ID", topupApi.includes('.eq("user_id", c.user.id)') && topupApi.includes("user_id: c.user.id")],
+  ["captain delivery reads and updates are scoped to the assigned captain", captainDeliveriesApiSource.includes('.eq("captain_id",c.user.id)')],
+  ["merchant order queries and updates enforce store ownership", merchantOrdersApi.includes('query=query.in("store_id",storeIds)') && merchantOrdersApi.includes('.in("store_id",permittedStoreIds)')],
+
 
 
   ["cashout management link is shown only in the super-admin card group", dashboardPage.includes('...(role==="super_admin"?[{title:"بەڕێوەبردنی Cashout"') && !dashboardPage.includes('...(admin?[{title:"بەڕێوەبردنی Cashout"')],
