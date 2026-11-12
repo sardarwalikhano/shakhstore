@@ -78,7 +78,6 @@ Before enabling these features, verify:
 - [ ] Database backup has been restored successfully in a recovery test.
 - [ ] Migration history is reconciled with the actual live schema.
 - [ ] All new migrations have passed staging tests in order.
-- [ ] Historical external-account balance is reconciled to real payment statements.
 - [ ] All internal IQD balances are clearly labelled as bookkeeping balances, never as bank balances.
 - [ ] Manual payout is physically confirmed outside SHAKH before the admin marks a cashout paid.
 - [ ] M16 prevents approval from debiting the wallet and settles exactly once at mark-paid.
@@ -88,9 +87,9 @@ Before enabling these features, verify:
 - [ ] Ordinary authenticated user receives HTTP 403 from admin APIs.
 - [ ] Signed-out request receives HTTP 401.
 - [ ] Top-up receipt review credits exactly once; reject credits nothing.
-- [ ] Cashout approval debits the requester and posts balanced ledger entries exactly once.
-- [ ] Cashout approval cannot reduce the external cash asset below zero.
 - [ ] Cashout rejection releases the reservation without debiting the wallet.
-- [ ] Mark-paid is available only after approval and cannot post a second settlement.
+- [ ] Cashout approval leaves user/platform/payout-clearing balances and ledger entries unchanged.
+- [ ] Mark-paid is available only after approval and a verified external manual payout; it posts the 75/25 settlement exactly once.
+- [ ] Legacy approved requests with an existing ledger transaction are marked paid without duplicate ledger posting.
 - [ ] Physical FastPay/FIB transfer is confirmed before marking paid.
 - [ ] Captain commission accrual uses 80/20 for new eligible deliveries.
