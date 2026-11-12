@@ -83,6 +83,7 @@ const checks = [
   ["top-up UI requires external transaction reference", topupPage.includes('id="topup-reference"') && topupPage.includes("minLength={3}") && topupPage.includes('required dir="ltr"')],
   ["top-up history displays submitted payment reference", topupPage.includes("item.sender_reference") && topupPage.includes("Reference:")],
   ["dashboard guard verifies the current Supabase user server-side", dashboardAuth.includes("supabase.auth.getUser()") && dashboardAuth.includes('redirect("/login")')],
+  ["missing Supabase configuration uses the supported login error code", dashboardAuth.includes('redirect("/login?error=config")')],
   ["all dashboard routes use a force-dynamic server guard", dashboardLayout.includes('dynamic = "force-dynamic"') && dashboardLayout.includes("await requireDashboardUser()")],
   ["top-up review page is restricted to super_admin", topupsAdminLayout.includes('requireDashboardUser(["super_admin"])')],
   ["cashout management page is restricted to super_admin", cashoutsAdminLayout.includes('requireDashboardUser(["super_admin"])')],
