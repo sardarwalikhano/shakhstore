@@ -180,6 +180,15 @@ begin
     raise exception 'A verified manual payout destination is required';
   end if;
 
+  -- M03/M15-era approved requests may already have a ledger settlement.
+  -- Do not post it twice; only record physical payout completion after verification.
+  if v_request.wallet_transaction_id is not null then
+    update public.wallet_cashout_requests
+    set status = 'paid', paid_at = now(), paid_by = p_admin_user_id
+    where id = p_request_id;
+    return v_request.wallet_transaction_id;
+  end if;
+
   select id into v_existing_id
   from public.wallet_transactions
   where idempotency_key = 'cashout:' || p_request_id::text;
@@ -281,7 +290,7 @@ alter table public.wallet_cashout_requests
       and wallet_transaction_id is null and paid_at is null and paid_by is null)
     or
     (status = 'approved' and reviewed_by is not null and reviewed_at is not null
-      and wallet_transaction_id is null and paid_at is null and paid_by is null)
+      and paid_at is null and paid_by is null)
     or
     (status = 'paid' and reviewed_by is not null and reviewed_at is not null
       and wallet_transaction_id is not null and paid_at is not null and paid_by is not null)
@@ -290,10 +299,10 @@ alter table public.wallet_cashout_requests
       and wallet_transaction_id is null and paid_at is null and paid_by is null)
   );
 
+-- Keep direct legacy RPC execution disabled; authenticated users must use the
+-- M14 wrapper, which requires and stores the FastPay/FIB payout destination.
 revoke all on function public.request_wallet_cashout(bigint, text)
-  from public, anon;
-grant execute on function public.request_wallet_cashout(bigint, text)
-  to authenticated;
+  from public, anon, authenticated;
 
 revoke all on function public.review_wallet_cashout(uuid, uuid, text, text)
   from public, anon, authenticated;
