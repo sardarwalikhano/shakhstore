@@ -59,7 +59,7 @@ Grant the role only after identifying and verifying the intended Auth user UUID.
 - The requester supplies their own FastPay/FIB payout destination.
 - Super Admin reviews and approves or rejects the request.
 - Approval changes the request to `approved` only. It does not debit the user's wallet, create a ledger transaction, or send money.
-- Pending and approved-but-unpaid requests both reserve the full requested amount from the user's available wallet balance.
+- Pending requests and approved requests that do not yet have a ledger settlement reserve the full requested amount from the user's available wallet balance. Legacy approved requests that already have a ledger transaction are not reserved again.
 - Super Admin manually sends the 75% payout to the user's supplied FastPay/FIB number outside SHAKH.
 - Only after confirming the external transfer does Super Admin select `mark paid`. M16 then atomically debits the user's wallet, credits the 25% platform share, and records the 75% payout in an internal payout-clearing account.
 - The payout-clearing account is strictly an internal accounting counterpart. Its balance is not a bank balance, cash-on-hand figure, or proof that a transfer occurred.
