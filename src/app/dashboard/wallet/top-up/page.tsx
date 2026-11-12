@@ -58,14 +58,15 @@ export default function WalletTopupPage() {
 
   return <main dir="rtl" className="min-h-screen bg-slate-50 px-4 py-8 sm:px-6">
     <div className="mx-auto max-w-4xl space-y-6">
-      <header><p className="text-sm font-bold text-orange-600">SHAKH STORE / WALLET</p><h1 className="mt-2 text-3xl font-black text-slate-900">پرکردنەوەی جزدان</h1><p className="mt-3"><a href="/dashboard/wallet/cash-out" className="font-bold text-orange-700 underline">کاش ئاوت</a></p><p className="mt-2 text-sm text-slate-600">پارەکە بنێرە بۆ ژمارەی سوپەر ئەدمین و وەسڵەکە بار بکە. باڵانس تەنها دوای پشکنین زیاد دەکرێت.</p></header>
+      <header><p className="text-sm font-bold text-orange-600">SHAKH STORE / WALLET</p><h1 className="mt-2 text-3xl font-black text-slate-900">پرکردنەوەی جزدان</h1><p className="mt-3"><a href="/dashboard/wallet/cash-out" className="font-bold text-orange-700 underline">کاش ئاوت</a></p><p className="mt-2 text-sm text-slate-600">پارەکە بە شێوەی بانکیی دەرەکی بنێرە بۆ ژمارەی سوپەر ئەدمین و وەسڵەکە بار بکە. باڵانس تەنها دوای پشتڕاستکردنەوەی دەستی سوپەر ئەدمین زیاد دەکرێت.</p>
+      <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">تێبینی: IQD لە Wallet ـی SHAKH تەنها تۆماری حسابداریی ناوخۆییە؛ پارەی بانکی نییە. سیستەم هیچ حەواڵەیەکی بانکی بە شێوەی ئۆتۆماتیکی ئەنجام نادات.</p></header>
       <section className="grid gap-3 sm:grid-cols-2">
         <div className="rounded-2xl border border-slate-200 bg-white p-5"><p className="font-bold">FastPay</p><p dir="ltr" className="mt-2 text-2xl font-black">07736999576</p></div>
         <div className="rounded-2xl border border-slate-200 bg-white p-5"><p className="font-bold">FIB</p><p dir="ltr" className="mt-2 text-2xl font-black">07504796924</p></div>
       </section>
       <section className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-7">
         <h2 className="text-xl font-black">داواکاریی نوێ</h2>
-        <p className="mt-1 text-sm text-slate-500">١ IQD پارەی پەسەندکراو = ١ IQD باڵانس</p>
+        <p className="mt-1 text-sm text-slate-500">١ IQD پارەی دەرەکیی پشتڕاستکراو = ١ IQD تۆماری ناوخۆیی Wallet</p>
         {error && <p role="alert" className="mt-4 rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
         {notice && <p role="status" className="mt-4 rounded-xl bg-emerald-50 p-3 text-sm text-emerald-800">{notice}</p>}
         <form onSubmit={submit} className="mt-5 space-y-4">
