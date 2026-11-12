@@ -91,6 +91,15 @@ begin
   order by id
   for update;
 
+  -- A concurrent retry may have waited on these locks while the first
+  -- transaction committed. Re-check the idempotency key before balance checks.
+  select id into v_existing_id
+  from public.wallet_transactions
+  where idempotency_key = p_idempotency_key;
+  if v_existing_id is not null then
+    return v_existing_id;
+  end if;
+
   select balance_minor into v_from_balance
   from public.wallet_accounts
   where id = v_from_id;
@@ -217,6 +226,14 @@ begin
   where id in (v_owner_account_id, v_referrer_account_id, v_platform_account_id)
   order by id
   for update;
+
+  -- Re-check after locks so concurrent retries share the first committed result.
+  select id into v_existing_id
+  from public.wallet_transactions
+  where idempotency_key = p_idempotency_key;
+  if v_existing_id is not null then
+    return v_existing_id;
+  end if;
 
   select balance_minor into v_owner_balance
   from public.wallet_accounts
