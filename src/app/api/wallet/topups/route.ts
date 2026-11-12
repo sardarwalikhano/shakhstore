@@ -53,8 +53,8 @@ export async function POST(request: Request) {
     }
     if (method !== "fastpay" && method !== "fib") return NextResponse.json({ error: "Payment method is invalid" }, { status: 400 });
     const senderReference = typeof reference === "string" ? reference.trim() : "";
-    const normalizedReference = senderReference.replace(/\s+/g, "").toUpperCase();
-    if (!/^[A-Z0-9._/-]{3,120}$/.test(normalizedReference)) {
+    const normalizedReference = senderReference.replace(/[ \t\r\n\f\v]+/g, "").toUpperCase();
+    if (senderReference.length > 120 || !/^[A-Z0-9._/-]{3,120}$/.test(normalizedReference)) {
       return NextResponse.json({ error: "ژمارەی مامەڵەی FastPay/FIB پێویستە و دەبێت ٣ تا ١٢٠ پیت/ژمارە بێت." }, { status: 400 });
     }
     if (!(receipt instanceof File) || receipt.size <= 0 || receipt.size > 5 * 1024 * 1024) {
