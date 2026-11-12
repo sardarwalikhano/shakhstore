@@ -24,6 +24,7 @@ The feature branch contains these additive migrations:
 3. `0014_cashout_payout_destination_and_completion.sql` — FastPay/FIB destination and explicit paid status.
 4. `0015_cashout_external_asset_accounting.sql` — intermediate accounting correction; superseded for the manual-payout workflow by M16.
 5. `0016_manual_cashout_settlement.sql` — separates approval from physical payout and posts the internal 75/25 settlement only after Super Admin confirms the manual transfer.
+6. `20261112183000_wallet_topup_duplicate_protection.sql` — stores receipt SHA-256 and normalized provider payment references with database-enforced unique indexes; protects legacy top-up review.
 
 These migrations depend on the existing wallet, cashout, storage, and commission schema. Do not apply them in isolation or assume the production migration history is complete. The production project has previously shown existing application tables while its migration history endpoint returned no applied migrations. Reconcile the live schema, functions, constraints, storage policies, and migration history before applying anything.
 
@@ -63,7 +64,7 @@ Grant the role only after identifying and verifying the intended Auth user UUID.
 - 1 IQD approved payment = 1 IQD wallet credit.
 - A user submits an amount and a private receipt.
 - No wallet credit occurs until Super Admin verifies the actual received payment and approves the request.
-- M12 idempotency prevents approving the same request twice, but it does not yet prevent the same external receipt/payment reference from being submitted under two different request IDs. This is a production rollout blocker: add database-enforced receipt SHA-256 and normalized payment-reference uniqueness, then test duplicate submissions and concurrent approvals on staging. Until that safeguard is shipped, Super Admin must not rely on request-level idempotency alone to detect duplicate external payments.
+- M17 adds database-enforced uniqueness for receipt SHA-256 across all top-up requests and normalized payment references per provider. The API computes the receipt digest and requires the external transaction reference. Concurrent duplicate submissions are rejected by unique indexes, not an application-only pre-check. Legacy pending top-ups created before M17 lack integrity metadata and cannot be approved; reject them and ask the user to submit a fresh request with a reference and receipt. Staging tests of duplicate and concurrent submissions are still required before Production.
 - Receipts must remain in the private `wallet-topup-receipts` Storage bucket; do not make this bucket public.
 
 ## 5. Cashout workflow
@@ -104,6 +105,7 @@ Before enabling these features, verify:
 - [ ] Signed-out request receives HTTP 401.
 - [ ] Top-up receipt review credits exactly once; reject credits nothing.
 - [ ] Duplicate top-up receipt hashes and external payment references are rejected at database level, including concurrent submissions.
+- [ ] Legacy pending top-up requests without M17 integrity metadata are rejected and resubmitted, not approved.
 - [ ] Cashout rejection releases the reservation without debiting the wallet.
 - [ ] Cashout approval leaves user/platform/payout-clearing balances and ledger entries unchanged.
 - [ ] Mark-paid is available only after approval and a verified external manual payout; it posts the 75/25 settlement exactly once.
