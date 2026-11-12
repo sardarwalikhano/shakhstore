@@ -69,15 +69,21 @@ export async function POST(request: Request) {
       p_admin_note: typeof v.note === "string" ? v.note.trim().slice(0, 1000) : null,
     });
     if (error) throw error;
-    await createInAppNotifications([{
-      userId: item.user_id,
-      type: "wallet",
-      title: v.decision === "approve" ? "داواکاری پرکردنەوەی جزدان پەسەند کرا" : "داواکاری پرکردنەوەی جزدان ڕەتکرایەوە",
-      body: v.decision === "approve"
-        ? "بڕی " + new Intl.NumberFormat("en-US").format(Number(item.amount_iqd)) + " IQD بۆ جزدانەکەت زیاد کرا."
-        : "داواکاری پرکردنەوەی جزدان ڕەتکرایەوە. بۆ زانیاری زیاتر تێبینی بەڕێوەبەر ببینە.",
-      data: { topup_request_id: item.id, decision: v.decision },
-    }]);
+    // The financial review is already committed by the database RPC.
+    // A notification failure must not report the successful credit as a failed review.
+    try {
+      await createInAppNotifications([{
+        userId: item.user_id,
+        type: "wallet",
+        title: v.decision === "approve" ? "داواکاری پرکردنەوەی جزدان پەسەند کرا" : "داواکاری پرکردنەوەی جزدان ڕەتکرایەوە",
+        body: v.decision === "approve"
+          ? "بڕی " + new Intl.NumberFormat("en-US").format(Number(item.amount_iqd)) + " IQD بۆ جزدانەکەت زیاد کرا."
+          : "داواکاری پرکردنەوەی جزدان ڕەتکرایەوە. بۆ زانیاری زیاتر تێبینی بەڕێوەبەر ببینە.",
+        data: { topup_request_id: item.id, decision: v.decision },
+      }]);
+    } catch (notificationError) {
+      console.error("Wallet top-up reviewed but notification delivery failed", notificationError);
+    }
     return NextResponse.json({ success: true, transactionId });
   } catch (error) {
     console.error("Admin wallet top-up review failed", error);
