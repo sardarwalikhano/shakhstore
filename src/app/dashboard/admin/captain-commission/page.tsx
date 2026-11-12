@@ -6,7 +6,7 @@ import { Save, Percent } from "lucide-react";
 type Settings = { commission_rate_bps: number; updated_at: string; updated_by: string | null };
 
 export default function CaptainCommissionSettingsPage() {
-  const [rate, setRate] = useState("20");
+  const [rate, setRate] = useState("80");
   const [settings, setSettings] = useState<Settings | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -99,7 +99,7 @@ export default function CaptainCommissionSettingsPage() {
                 <span className="text-2xl font-black text-orange-600">%</span>
               </div>
               <p className="mt-3 text-sm leading-6 text-slate-500">
-                نموونە: ئەگەر کرێی گەیاندن ٥,٠٠٠ دینار بێت و ڕێژە ٢٠٪ بێت، پاداشتی کاپتن ١,٠٠٠ دینار و بەشی پلاتفۆرم ٤,٠٠٠ دینار دەبێت.
+                نموونە: ئەگەر کرێی گەیاندن ١,٠٠٠ دینار بێت و ڕێژەی کاپتن ٨٠٪ بێت، ٨٠٠ دینار بۆ کاپتن و ٢٠٠ دینار بۆ پلاتفۆرم دەبێت.
               </p>
               <button disabled={saving} onClick={() => void save()} className="mt-5 inline-flex items-center gap-2 rounded-xl bg-orange-500 px-5 py-3 font-bold text-white disabled:opacity-50">
                 <Save size={17} /> {saving ? "پاشەکەوتکردن..." : "پاشەکەوتکردنی ڕێژە"}
@@ -111,7 +111,7 @@ export default function CaptainCommissionSettingsPage() {
 
         <section className="mt-5 rounded-2xl border bg-white p-5 text-sm leading-7 text-slate-600">
           <h2 className="font-black text-slate-900">تێبینیی ژمێریاری</h2>
-          <p>پاداشت تەنها کاتێک تۆمار دەکرێت کە کاپتن گەیاندن بە تەواوی پشتڕاست بکاتەوە. ئەو بڕە لە سەرەتادا وەک قەرزی پاداشت تۆمار دەکرێت، نەک باڵانسی پارەدراو. هیچ باڵانسێکی کاپتن بەبێ پرۆسەی جیاوازی پەسەندکردن و پارەدان زیاد ناکرێت.</p>
+          <p>کۆمسیۆنی کاپتن بە بنەڕەت ٨٠٪ و بەشی پلاتفۆرم ٢٠٪ ـە. پاداشت تەنها کاتێک تۆمار دەکرێت کە کاپتن گەیاندن بە تەواوی پشتڕاست بکاتەوە. ئەو بڕە لە سەرەتادا وەک قەرزی پاداشت تۆمار دەکرێت، نەک باڵانسی پارەدراو. هیچ باڵانسێکی کاپتن بەبێ پرۆسەی جیاوازی پەسەندکردن و پارەدان زیاد ناکرێت.</p>
           <p>گۆڕینی ڕێژە تەنها کاریگەری لەسەر داواکارییە نوێکان دەبێت؛ ڕێژەی داواکارییە کۆنەکان لە کاتی گەیاندن snapshot کراوە.</p>
         </section>
       </div>
