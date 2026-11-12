@@ -36,7 +36,7 @@ export async function GET() {
         c.db.auth.admin.getUserById(item.user_id),
         c.db.storage.from("wallet-topup-receipts").createSignedUrl(item.receipt_path, 300),
       ]);
-      return { ...item, user_email: userData.user?.email ?? null, receipt_url: signed.signedUrl ?? null };
+      return { ...item, user_email: userData.user?.email ?? null, receipt_url: signed?.signedUrl ?? null };
     }));
     return NextResponse.json({ requests });
   } catch (error) {
