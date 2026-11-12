@@ -108,12 +108,17 @@ export async function POST(request: Request) {
         p_request_id: requestId, p_admin_user_id: auth.user.id,
       });
       if (error) throw error;
-      await createInAppNotifications([{
-        userId: cashout.user_id, type: "cashout",
-        title: "پارەی کاش ئاوت نێردرا",
-        body: "بڕی " + new Intl.NumberFormat("en-US").format(Number(cashout.cash_amount_iqd)) + " د.ع بۆ ژمارەی تۆ نێردرا.",
-        data: { cashout_request_id: cashout.id, status: "paid" },
-      }]);
+      try {
+        await createInAppNotifications([{
+          userId: cashout.user_id, type: "cashout",
+          title: "پارەی کاش ئاوت نێردرا",
+          body: "بڕی " + new Intl.NumberFormat("en-US").format(Number(cashout.cash_amount_iqd)) + " د.ع بۆ ژمارەی تۆ نێردرا.",
+          data: { cashout_request_id: cashout.id, status: "paid" },
+        }]);
+      } catch (notificationError) {
+        // Paid status is already committed; notification delivery is best-effort.
+        console.error("Cashout marked paid but notification delivery failed:", notificationError);
+      }
       return NextResponse.json({ success: true, status: "paid" });
     }
     if (decision !== "approve" && decision !== "reject") {
@@ -154,15 +159,20 @@ export async function POST(request: Request) {
     const amount = new Intl.NumberFormat("en-US").format(Number(cashout.requested_amount_iqd));
     const approved = decision === "approve";
     const cashAmount = new Intl.NumberFormat("en-US").format(Number(cashout.cash_amount_iqd));
-    await createInAppNotifications([{
-      userId: cashout.user_id,
-      type: "cashout",
-      title: approved ? "داواکاری کشانەوە پەسەند کرا" : "داواکاری کشانەوە ڕەتکرایەوە",
-      body: approved
-        ? "داواکاری " + amount + " د.ع پەسەند کرا. بڕی پارەدانی دەرەکی " + cashAmount + " د.عە و پێویستی بە جێبەجێکردنی payout هەیە."
-        : "داواکاری " + amount + " د.ع ڕەتکرایەوە. بڕەکە لە wallet ـەکەتدا بەردەستە.",
-      data: { cashout_request_id: cashout.id, decision },
-    }]);
+    try {
+      await createInAppNotifications([{
+        userId: cashout.user_id,
+        type: "cashout",
+        title: approved ? "داواکاری کشانەوە پەسەند کرا" : "داواکاری کشانەوە ڕەتکرایەوە",
+        body: approved
+          ? "داواکاری " + amount + " د.ع پەسەند کرا. بڕی پارەدانی دەرەکی " + cashAmount + " د.عە و پێویستی بە جێبەجێکردنی payout هەیە."
+          : "داواکاری " + amount + " د.ع ڕەتکرایەوە. بڕەکە لە wallet ـەکەتدا بەردەستە.",
+        data: { cashout_request_id: cashout.id, decision },
+      }]);
+    } catch (notificationError) {
+      // The review and ledger settlement are already committed.
+      console.error("Cashout reviewed but notification delivery failed:", notificationError);
+    }
 
     return NextResponse.json({ success: true, transactionId: data });
   } catch (error) {
