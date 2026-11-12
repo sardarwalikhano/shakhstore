@@ -17,7 +17,7 @@ function functionBody(name) {
   if (!match || match.index === undefined) {
     throw new Error(`Missing function definition: public.${name}`);
   }
-  const end = sql.indexOf("\\n$$;", match.index);
+  const end = sql.indexOf("\n$;", match.index);
   if (end < 0) {
     throw new Error(`Unterminated function definition: public.${name}`);
   }
@@ -36,13 +36,13 @@ const checks = [
   ["referral reward validates positive amount", /p_total_iqd is null or p_total_iqd <= 0/i.test(reward)],
   ["referral reward enforces cashout reservation", reward.includes("Insufficient available wallet balance after cashout reservations")],
   ["cashout request reserves pending and unsettled approved requests", request.includes("status = 'pending'") && request.includes("status = 'approved' and wallet_transaction_id is null")],
-  ["all debit paths lock accounts deterministically", [transfer, reward].every((body) => /order by id\\s+for update/i.test(body))],
+  ["all debit paths lock accounts deterministically", [transfer, reward].every((body) => /order by id\s+for update/i.test(body))],
   ["all debit paths recheck idempotency after locks", [transfer, reward].every((body) => {
-    const lock = body.search(/order by id\\s+for update/i);
+    const lock = body.search(/order by id\s+for update/i);
     const recheck = body.lastIndexOf("select id into v_existing_id");
     return lock >= 0 && recheck > lock;
   })],
-  ["approval changes workflow state without ledger settlement", review.includes("set status = 'approved'") && review.includes("wallet_transaction_id = null") && !/update public\\.wallet_accounts|insert into public\\.wallet_(?:transactions|entries)/i.test(review)],
+  ["approval changes workflow state without ledger settlement", review.includes("set status = 'approved'") && review.includes("wallet_transaction_id = null") && !/update public\.wallet_accounts|insert into public\.wallet_(?:transactions|entries)/i.test(review)],
   ["mark-paid posts settlement exactly once", paid.includes("Cashout settlement already exists") && paid.includes("'cashout:' || p_request_id::text")],
   ["legacy settled cashouts are not posted twice", paid.includes("if v_request.wallet_transaction_id is not null then")],
   ["legacy void RPC is dropped before UUID-returning replacement", sql.indexOf("drop function if exists public.mark_wallet_cashout_paid(uuid, uuid);") < sql.indexOf("create function public.mark_wallet_cashout_paid(")],
@@ -57,5 +57,5 @@ for (const [label, passed] of checks) {
   if (!passed) failures += 1;
 }
 
-console.log(`\\nWallet migration invariants: ${checks.length - failures}/${checks.length} passed.`);
+console.log(`\nWallet migration invariants: ${checks.length - failures}/${checks.length} passed.`);
 if (failures > 0) process.exitCode = 1;
