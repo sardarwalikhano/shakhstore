@@ -72,7 +72,7 @@ Grant the role only after identifying and verifying the intended Auth user UUID.
 - The requester supplies their own FastPay/FIB payout destination.
 - Super Admin reviews and approves or rejects the request.
 - Approval changes the request to `approved` only. It does not debit the user's wallet, create a ledger transaction, or send money.
-- Pending requests and approved requests that do not yet have a ledger settlement reserve the full requested amount from the user's available wallet balance. Legacy approved requests that already have a ledger transaction are not reserved again. M16 also makes the generic server-side wallet transfer RPC subtract these reservations before allowing another debit.
+- Pending requests and approved requests that do not yet have a ledger settlement reserve the full requested amount from the user's available wallet balance. Legacy approved requests that already have a ledger transaction are not reserved again. M16 makes both generic server-side wallet transfers and referral-reward settlements subtract these reservations before allowing another debit.
 - Super Admin manually sends the 75% payout to the user's supplied FastPay/FIB number outside SHAKH.
 - Only after confirming the external transfer does Super Admin select `mark paid`. M16 then atomically debits the user's wallet, credits the 25% platform share, and records the 75% payout in an internal payout-clearing account.
 - The payout-clearing account is strictly an internal accounting counterpart. Its balance is not a bank balance, cash-on-hand figure, or proof that a transfer occurred.
@@ -95,7 +95,7 @@ Before enabling these features, verify:
 - [ ] Manual payout is physically confirmed outside SHAKH before the admin marks a cashout paid.
 - [ ] M16 prevents approval from debiting the wallet and settles exactly once at mark-paid.
 - [ ] Approved-but-unpaid requests remain reserved and cannot be requested a second time.
-- [ ] The generic internal wallet-transfer RPC cannot spend funds reserved by a pending or unsettled approved cashout.
+- [ ] Generic wallet transfers and referral-reward settlements cannot spend funds reserved by a pending or unsettled approved cashout.
 - [ ] Private receipt bucket and access policies are verified.
 - [ ] Intended administrator has trusted `app_metadata.role = super_admin`.
 - [ ] Ordinary authenticated user receives HTTP 403 from admin APIs.
