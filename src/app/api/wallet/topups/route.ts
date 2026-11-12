@@ -58,9 +58,25 @@ export async function POST(request: Request) {
     const allowed = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
     if (!allowed.includes(receipt.type)) return NextResponse.json({ error: "تەنها JPG, PNG, WEBP یان PDF قبوڵ دەکرێت." }, { status: 400 });
 
+    const bytes = new Uint8Array(await receipt.arrayBuffer());
+    const startsWith = (...signature: number[]) => signature.every((byte, index) => bytes[index] === byte);
+    const isJpeg = startsWith(0xff, 0xd8, 0xff);
+    const isPng = startsWith(0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a);
+    const isWebp = bytes.length >= 12
+      && String.fromCharCode(...bytes.slice(0, 4)) === "RIFF"
+      && String.fromCharCode(...bytes.slice(8, 12)) === "WEBP";
+    const isPdf = String.fromCharCode(...bytes.slice(0, 5)) === "%PDF-";
+    const signatureMatches =
+      (receipt.type === "image/jpeg" && isJpeg)
+      || (receipt.type === "image/png" && isPng)
+      || (receipt.type === "image/webp" && isWebp)
+      || (receipt.type === "application/pdf" && isPdf);
+    if (!signatureMatches) {
+      return NextResponse.json({ error: "ناوەڕۆکی فایل لەگەڵ جۆری ڕاگەیەنراوی وەسڵ ناگونجێت." }, { status: 400 });
+    }
+
     const ext = receipt.type === "image/jpeg" ? "jpg" : receipt.type === "application/pdf" ? "pdf" : receipt.type.split("/")[1];
     uploadedPath = c.user.id + "/" + randomUUID() + "." + ext;
-    const bytes = new Uint8Array(await receipt.arrayBuffer());
     const { error: uploadError } = await c.db.storage.from("wallet-topup-receipts")
       .upload(uploadedPath, bytes, { contentType: receipt.type, upsert: false });
     if (uploadError) throw uploadError;
