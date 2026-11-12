@@ -94,6 +94,7 @@ Before enabling these features, verify:
 - [ ] All internal IQD balances are clearly labelled as bookkeeping balances, never as bank balances.
 - [ ] Manual payout is physically confirmed outside SHAKH before the admin marks a cashout paid.
 - [ ] M16 prevents approval from debiting the wallet and settles exactly once at mark-paid.
+- [ ] `npm run check:wallet-migration` passes as part of CI before build.
 - [ ] Approved-but-unpaid requests remain reserved and cannot be requested a second time.
 - [ ] Generic wallet transfers and referral-reward settlements cannot spend funds reserved by a pending or unsettled approved cashout.
 - [ ] Private receipt bucket and access policies are verified.
