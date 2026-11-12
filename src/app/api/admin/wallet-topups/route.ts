@@ -87,6 +87,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true, transactionId });
   } catch (error) {
     console.error("Admin wallet top-up review failed", error);
+    const message =
+      typeof error === "object" && error !== null && "message" in error
+        ? String((error as { message?: unknown }).message ?? "")
+        : "";
+    if (message.includes("lacks receipt integrity data")) {
+      return NextResponse.json(
+        { error: "ئەم داواکارییە پێش پاراستنی نوێی وەسڵ تۆمارکراوە؛ ڕەتیکە و داوا لە بەکارهێنەر بکە بە ژمارەی مامەڵەی ڕاستەقینە داواکارییەکی نوێ بنێرێت." },
+        { status: 409 },
+      );
+    }
     return NextResponse.json({ error: "پشکنین و پەسەندکردنی داواکاری سەرکەوتوو نەبوو." }, { status: 409 });
   }
 }
