@@ -56,7 +56,7 @@ export async function GET() {
 
     const { data, error } = await auth.adminClient
       .from("wallet_cashout_requests")
-      .select("id,user_id,requested_amount_iqd,cash_amount_iqd,platform_fee_iqd,status,user_note,admin_note,created_at,reviewed_at")
+      .select("id,user_id,requested_amount_iqd,cash_amount_iqd,platform_fee_iqd,status,user_note,admin_note,payout_method,payout_phone,paid_at,created_at,reviewed_at")
       .order("created_at", { ascending: false })
       .limit(100);
 
@@ -87,14 +87,34 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
     }
 
-    const { requestId, decision, note } = body as {
+    const { requestId, decision, note, action } = body as {
       requestId?: unknown;
       decision?: unknown;
+      action?: unknown;
       note?: unknown;
     };
 
     if (typeof requestId !== "string" || !/^[0-9a-f-]{36}$/i.test(requestId)) {
       return NextResponse.json({ error: "Invalid cashout request ID" }, { status: 400 });
+    }
+    if (action === "mark_paid") {
+      const { data: cashout, error: readError } = await auth.adminClient
+        .from("wallet_cashout_requests").select("id,user_id,cash_amount_iqd,status")
+        .eq("id", requestId).maybeSingle();
+      if (readError) throw readError;
+      if (!cashout) return NextResponse.json({ error: "Cashout request not found" }, { status: 404 });
+      if (cashout.status !== "approved") return NextResponse.json({ error: "Only approved requests can be marked paid" }, { status: 409 });
+      const { error } = await auth.adminClient.rpc("mark_wallet_cashout_paid", {
+        p_request_id: requestId, p_admin_user_id: auth.user.id,
+      });
+      if (error) throw error;
+      await createInAppNotifications([{
+        userId: cashout.user_id, type: "cashout",
+        title: "پارەی کاش ئاوت نێردرا",
+        body: "بڕی " + new Intl.NumberFormat("en-US").format(Number(cashout.cash_amount_iqd)) + " د.ع بۆ ژمارەی تۆ نێردرا.",
+        data: { cashout_request_id: cashout.id, status: "paid" },
+      }]);
+      return NextResponse.json({ success: true, status: "paid" });
     }
     if (decision !== "approve" && decision !== "reject") {
       return NextResponse.json({ error: "Decision must be approve or reject" }, { status: 400 });
