@@ -22,15 +22,16 @@ The feature branch contains these additive migrations:
 1. `0012_wallet_topups_fastpay_fib.sql` — private receipt-backed top-up requests and Super Admin review.
 2. `0013_captain_commission_80_20.sql` — captain delivery-fee share default: 80% captain / 20% platform.
 3. `0014_cashout_payout_destination_and_completion.sql` — FastPay/FIB destination and explicit paid status.
-4. `0015_cashout_external_asset_accounting.sql` — corrects external cash-asset balance reduction when a cashout is approved.
+4. `0015_cashout_external_asset_accounting.sql` — intermediate accounting correction; superseded for the manual-payout workflow by M16.
+5. `0016_manual_cashout_settlement.sql` — separates approval from physical payout and posts the internal 75/25 settlement only after Super Admin confirms the manual transfer.
 
 These migrations depend on the existing wallet, cashout, storage, and commission schema. Do not apply them in isolation or assume the production migration history is complete. The production project has previously shown existing application tables while its migration history endpoint returned no applied migrations. Reconcile the live schema, functions, constraints, storage policies, and migration history before applying anything.
 
 Before a production change:
 - Take and verify a restorable database backup.
 - Compare the exact live schema with all prerequisite migrations.
-- Confirm the external wallet account is the recorded FastPay/FIB cash asset pool and reconcile its opening balance to actual funds held.
-- Review all historical top-up and cashout transactions against actual FastPay/FIB statements. Migration 0015 corrects future cashout postings only; it does not rewrite historical ledger entries or automatically repair the external account balance.
+- Treat every IQD wallet/account balance as an internal bookkeeping unit only; it is not evidence of money held in FastPay/FIB or a bank account.
+- Review historical top-up and cashout ledger entries against actual FastPay/FIB receipts and statements. M16 does not rewrite historical transactions. Legacy approved cashouts with an existing ledger transaction are marked paid without posting a second settlement.
 - Test on a separate staging project with realistic top-up, cashout, rejection, and retry scenarios.
 - Prepare a tested rollback/recovery plan.
 
@@ -57,11 +58,13 @@ Grant the role only after identifying and verifying the intended Auth user UUID.
 - The split is 75% to the requester and 25% to SHAKH.
 - The requester supplies their own FastPay/FIB payout destination.
 - Super Admin reviews and approves or rejects the request.
-- Approval debits the user's wallet and posts the 75/25 ledger settlement. The external cash-asset account is reduced by the 75% payout and must have sufficient recorded balance.
-- After Super Admin actually sends the money through FastPay/FIB, the admin marks the request as `paid`. This records payout completion; it does not post a second ledger settlement.
-- A rejected request releases the pending reservation and does not debit the wallet.
-
-The external account uses asset accounting: a debit increases the recorded cash asset (incoming top-up), and a credit decreases it (outgoing cashout). Its opening balance and every movement must be reconciled to real FastPay/FIB funds. Do not treat it as a generic user liability account.
+- Approval changes the request to `approved` only. It does not debit the user's wallet, create a ledger transaction, or send money.
+- Pending and approved-but-unpaid requests both reserve the full requested amount from the user's available wallet balance.
+- Super Admin manually sends the 75% payout to the user's supplied FastPay/FIB number outside SHAKH.
+- Only after confirming the external transfer does Super Admin select `mark paid`. M16 then atomically debits the user's wallet, credits the 25% platform share, and records the 75% payout in an internal payout-clearing account.
+- The payout-clearing account is strictly an internal accounting counterpart. Its balance is not a bank balance, cash-on-hand figure, or proof that a transfer occurred.
+- A rejected request releases the reservation and does not debit the wallet.
+- No bank API, automatic transfer, or external payment execution is performed by SHAKH.
 
 ## 6. Captain delivery commission
 
@@ -76,7 +79,10 @@ Before enabling these features, verify:
 - [ ] Migration history is reconciled with the actual live schema.
 - [ ] All new migrations have passed staging tests in order.
 - [ ] Historical external-account balance is reconciled to real payment statements.
-- [ ] External FastPay/FIB asset opening balance matches actual funds held.
+- [ ] All internal IQD balances are clearly labelled as bookkeeping balances, never as bank balances.
+- [ ] Manual payout is physically confirmed outside SHAKH before the admin marks a cashout paid.
+- [ ] M16 prevents approval from debiting the wallet and settles exactly once at mark-paid.
+- [ ] Approved-but-unpaid requests remain reserved and cannot be requested a second time.
 - [ ] Private receipt bucket and access policies are verified.
 - [ ] Intended administrator has trusted `app_metadata.role = super_admin`.
 - [ ] Ordinary authenticated user receives HTTP 403 from admin APIs.
