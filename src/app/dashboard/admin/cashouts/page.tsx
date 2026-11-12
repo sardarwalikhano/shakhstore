@@ -155,7 +155,7 @@ export default function AdminCashoutsPage() {
                   <div className="mt-3 flex flex-wrap gap-2">
                     {item.status === "pending" && <button onClick={() => void review(item.id, "approve")} disabled={busyId !== null} className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-3 text-sm font-bold text-white disabled:opacity-50"><CheckCircle2 size={17} />{busyId === item.id ? "تکایە چاوەڕێ بکە..." : "پەسەندکردن"}</button>}
                     {item.status === "pending" && <button onClick={() => void review(item.id, "reject")} disabled={busyId !== null} className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-5 py-3 text-sm font-bold text-white disabled:opacity-50"><XCircle size={17} />ڕەتکردنەوە</button>}
-                    {item.status === "approved" && <button onClick={() => void review(item.id, "mark_paid")} disabled={busyId !== null} className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white disabled:opacity-50">پارە نێردرا / تەواوبوو</button>}
+                    {item.status === "approved" && item.payout_method && item.payout_phone && <button onClick={() => void review(item.id, "mark_paid")} disabled={busyId !== null} className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white disabled:opacity-50">پارە نێردرا / تەواوبوو</button>}
                   </div>
                 </div>
               )}
