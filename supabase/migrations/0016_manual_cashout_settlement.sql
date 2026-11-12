@@ -25,6 +25,112 @@ create unique index if not exists wallet_accounts_payout_clearing_uq
   on public.wallet_accounts(currency)
   where owner_type = 'payout_clearing';
 
+-- Generic internal wallet transfers must preserve any cashout hold. The
+-- routine is service-role-only and is retained for backend transfers; it cannot
+-- spend amounts reserved by pending or unsettled approved cashout requests.
+create or replace function public.post_wallet_transfer(
+  p_from_user uuid,
+  p_to_user uuid,
+  p_amount_iqd bigint,
+  p_idempotency_key text,
+  p_transaction_type text,
+  p_reference_id text,
+  p_description text
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = ''
+as $
+declare
+  v_from_id uuid;
+  v_to_id uuid;
+  v_from_balance bigint;
+  v_reserved bigint;
+  v_transaction_id uuid;
+  v_existing_id uuid;
+begin
+  if p_from_user is null or p_to_user is null or p_from_user = p_to_user then
+    raise exception 'Invalid wallet owners';
+  end if;
+  if p_amount_iqd is null or p_amount_iqd <= 0 then
+    raise exception 'Amount must be positive';
+  end if;
+  if p_idempotency_key is null or length(trim(p_idempotency_key)) < 8 then
+    raise exception 'A valid idempotency key is required';
+  end if;
+
+  select id into v_existing_id
+  from public.wallet_transactions
+  where idempotency_key = p_idempotency_key;
+
+  if v_existing_id is not null then
+    return v_existing_id;
+  end if;
+
+  insert into public.wallet_accounts(owner_type, owner_id)
+  values ('user', p_from_user)
+  on conflict (owner_id, currency) where owner_type = 'user' do nothing;
+
+  insert into public.wallet_accounts(owner_type, owner_id)
+  values ('user', p_to_user)
+  on conflict (owner_id, currency) where owner_type = 'user' do nothing;
+
+  select id, balance_minor into v_from_id, v_from_balance
+  from public.wallet_accounts
+  where owner_type = 'user' and owner_id = p_from_user and currency = 'IQD'
+  for update;
+
+  select id into v_to_id
+  from public.wallet_accounts
+  where owner_type = 'user' and owner_id = p_to_user and currency = 'IQD'
+  for update;
+
+  select coalesce(sum(requested_amount_iqd), 0)
+    into v_reserved
+  from public.wallet_cashout_requests
+  where user_id = p_from_user
+    and (
+      status = 'pending'
+      or (status = 'approved' and wallet_transaction_id is null)
+    );
+
+  if v_from_balance - v_reserved < p_amount_iqd then
+    raise exception 'Insufficient available wallet balance after cashout reservations';
+  end if;
+
+  insert into public.wallet_transactions(
+    idempotency_key, transaction_type, reference_id, description
+  ) values (
+    p_idempotency_key, p_transaction_type, p_reference_id, p_description
+  )
+  on conflict (idempotency_key) do nothing
+  returning id into v_transaction_id;
+
+  if v_transaction_id is null then
+    select id into v_existing_id
+    from public.wallet_transactions
+    where idempotency_key = p_idempotency_key;
+    return v_existing_id;
+  end if;
+
+  update public.wallet_accounts
+  set balance_minor = balance_minor - p_amount_iqd
+  where id = v_from_id;
+
+  update public.wallet_accounts
+  set balance_minor = balance_minor + p_amount_iqd
+  where id = v_to_id;
+
+  insert into public.wallet_entries(transaction_id, account_id, entry_type, amount_minor)
+  values
+    (v_transaction_id, v_from_id, 'debit', p_amount_iqd),
+    (v_transaction_id, v_to_id, 'credit', p_amount_iqd);
+
+  return v_transaction_id;
+end;
+$;
+
 -- Pending and newly approved-but-unpaid requests reserve the full amount.
 -- Legacy approved requests that already have a ledger settlement are not reserved again.
 create or replace function public.request_wallet_cashout(
@@ -320,6 +426,11 @@ alter table public.wallet_cashout_requests
 revoke all on function public.request_wallet_cashout(bigint, text)
   from public, anon, authenticated;
 
+revoke all on function public.post_wallet_transfer(uuid, uuid, bigint, text, text, text, text)
+  from public, anon, authenticated;
+grant execute on function public.post_wallet_transfer(uuid, uuid, bigint, text, text, text, text)
+  to service_role;
+
 revoke all on function public.review_wallet_cashout(uuid, uuid, text, text)
   from public, anon, authenticated;
 grant execute on function public.review_wallet_cashout(uuid, uuid, text, text)
@@ -332,6 +443,8 @@ grant execute on function public.mark_wallet_cashout_paid(uuid, uuid)
 
 comment on table public.wallet_accounts is
   'Internal IQD ledger accounts only. Account balances are platform bookkeeping units, not bank balances.';
+comment on function public.post_wallet_transfer(uuid, uuid, bigint, text, text, text, text) is
+  'Service-role-only internal transfer. Enforces pending and approved-unsettled cashout reservations before debiting the sender wallet.';
 comment on function public.review_wallet_cashout(uuid, uuid, text, text) is
   'Service-role-only workflow review. Approval reserves the request; it does not debit a wallet or send money.';
 comment on function public.mark_wallet_cashout_paid(uuid, uuid) is
