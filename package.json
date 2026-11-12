@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "npm run lint && next build --no-lint",
+    "build": "npm run lint && npm run check:wallet-migration && next build --no-lint",
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
