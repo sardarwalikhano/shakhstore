@@ -59,6 +59,7 @@ const checks = [
   ["payout clearing is not treated as bank balance", /Never interpret this balance as bank funds|not a bank balance/i.test(sql)],
   ["top-up migration stores SHA-256 receipt hashes", /add column if not exists receipt_sha256 text/i.test(topupSql)],
   ["top-up migration stores normalized payment references", /add column if not exists sender_reference_normalized text/i.test(topupSql)],
+  ["normalized payment references have a bounded length", topupSql.includes("char_length(sender_reference_normalized) between 3 and 120")],
   ["receipt hashes have a partial unique index", topupSql.includes("create unique index if not exists wallet_topup_receipt_sha256_uidx") && topupSql.includes("where receipt_sha256 is not null")],
   ["provider-scoped normalized references have a unique index", topupSql.includes("create unique index if not exists wallet_topup_payment_reference_uidx") && topupSql.includes("payment_method, sender_reference_normalized")],
   ["pending requests require integrity metadata", topupSql.includes("status <> 'pending'") && topupSql.includes("receipt_sha256 is not null") && topupSql.includes("sender_reference_normalized is not null")],
