@@ -64,6 +64,9 @@ jobs:
       - name: TypeScript
         run: npm run typecheck
 
+      - name: Supabase migration inventory (read-only)
+        run: npm run audit:supabase-migrations
+
       - name: Wallet migration invariants
         run: npm run check:wallet-migration
 
