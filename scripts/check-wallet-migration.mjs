@@ -17,11 +17,12 @@ function functionBody(name) {
   if (!match || match.index === undefined) {
     throw new Error(`Missing function definition: public.${name}`);
   }
-  const end = sql.indexOf("\n$;", match.index);
+  const endMarker = String.fromCharCode(10, 36, 36, 59);
+  const end = sql.indexOf(endMarker, match.index);
   if (end < 0) {
     throw new Error(`Unterminated function definition: public.${name}`);
   }
-  return sql.slice(match.index, end + 4);
+  return sql.slice(match.index, end + endMarker.length);
 }
 
 const transfer = functionBody("post_wallet_transfer");
