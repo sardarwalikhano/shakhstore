@@ -64,5 +64,8 @@ jobs:
       - name: TypeScript
         run: npm run typecheck
 
+      - name: Wallet migration invariants
+        run: npm run check:wallet-migration
+
       - name: Production build
         run: npm run build
