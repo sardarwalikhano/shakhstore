@@ -92,8 +92,9 @@ begin
       'Wallet top-up via ' || upper(v_request.payment_method))
     returning id into v_transaction_id;
 
-  -- External clearing account records the incoming cash asset; user wallet
-  -- records the matching liability. Both ledger sides are committed atomically.
+  -- The external clearing account uses the same credit-normal balance
+  -- convention as the existing cashout routine: balance increases are credits.
+  -- The user wallet is credited by the same amount in this balanced transfer.
   update public.wallet_accounts set balance_minor=balance_minor + v_request.amount_iqd
     where id=v_external_account_id;
 
@@ -102,7 +103,7 @@ begin
 
   insert into public.wallet_entries(transaction_id, account_id, entry_type, amount_minor)
     values
-      (v_transaction_id, v_external_account_id, 'debit', v_request.amount_iqd),
+      (v_transaction_id, v_external_account_id, 'credit', v_request.amount_iqd),
       (v_transaction_id, v_account_id, 'credit', v_request.amount_iqd);
 
   update public.wallet_topup_requests
