@@ -58,7 +58,7 @@ export default function WalletCashoutPage() {
     <div className="mx-auto max-w-4xl space-y-6">
       <header>
         <p className="text-sm font-bold text-orange-600">SHAKH STORE / WALLET</p>
-        <h1 className="mt-2 text-3xl font-black text-slate-900">کاش ئاوتی جزدان</h1>
+        <h1 className="mt-2 text-3xl font-black text-slate-900">کاش ئاوتی جزدان</h1><p className="mt-3"><a href="/dashboard/wallet/top-up" className="font-bold text-orange-700 underline">پرکردنەوەی جزدان</a></p>
         <p className="mt-2 text-sm text-slate-600">ژمارەی FastPay یان FIB ـی خۆت بنووسە. Super Admin دوای پەسەندکردن پارەکە بە دەستی دەنێرێت.</p>
       </header>
       <section className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-7">
