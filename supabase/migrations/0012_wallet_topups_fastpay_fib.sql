@@ -52,6 +52,7 @@ as $$
 declare
   v_request public.wallet_topup_requests%rowtype;
   v_account_id uuid;
+  v_external_account_id uuid;
   v_transaction_id uuid;
 begin
   if p_admin_user_id is null then raise exception 'Admin identity required'; end if;
@@ -74,8 +75,16 @@ begin
     values ('user', v_request.user_id)
     on conflict (owner_id, currency) where owner_type='user' do nothing;
 
+  insert into public.wallet_accounts(owner_type, owner_id)
+    values ('external', null)
+    on conflict (currency) where owner_type='external' do nothing;
+
   select id into v_account_id from public.wallet_accounts
     where owner_type='user' and owner_id=v_request.user_id and currency='IQD'
+    for update;
+
+  select id into v_external_account_id from public.wallet_accounts
+    where owner_type='external' and currency='IQD'
     for update;
 
   insert into public.wallet_transactions(idempotency_key, transaction_type, reference_id, description)
@@ -83,11 +92,18 @@ begin
       'Wallet top-up via ' || upper(v_request.payment_method))
     returning id into v_transaction_id;
 
+  -- External clearing account records the incoming cash asset; user wallet
+  -- records the matching liability. Both ledger sides are committed atomically.
+  update public.wallet_accounts set balance_minor=balance_minor + v_request.amount_iqd
+    where id=v_external_account_id;
+
   update public.wallet_accounts set balance_minor=balance_minor + v_request.amount_iqd
     where id=v_account_id;
 
   insert into public.wallet_entries(transaction_id, account_id, entry_type, amount_minor)
-    values (v_transaction_id, v_account_id, 'credit', v_request.amount_iqd);
+    values
+      (v_transaction_id, v_external_account_id, 'debit', v_request.amount_iqd),
+      (v_transaction_id, v_account_id, 'credit', v_request.amount_iqd);
 
   update public.wallet_topup_requests
     set status='approved', admin_note=nullif(trim(p_admin_note),''),
