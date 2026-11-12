@@ -7,7 +7,8 @@
     "build": "npm run lint && next build --no-lint",
     "start": "next start",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "check:wallet-migration": "node scripts/check-wallet-migration.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.7.0",
