@@ -85,7 +85,23 @@ Grant the role only after identifying and verifying the intended Auth user UUID.
 
 The approved delivery-fee split is 80% captain / 20% platform. The 80% default applies to new accruals; historical commission rows retain their stored rate.
 
-## 7. Production verification checklist
+## 7. Latest Production Advisor findings (read-only, 2026-11-12)
+
+The current Production Supabase project still reports these items. No remediation SQL or Auth configuration was changed during this review.
+
+### Security
+- **WARN — exposed legacy cashout RPC:** `public.request_wallet_cashout(bigint,text)` is a `SECURITY DEFINER` function still executable by `authenticated`. M14 revokes this grant and exposes the destination-validating wrapper instead, but M14 has not been applied to Production. Treat this as a release blocker until the live grants are verified after a controlled migration. [Supabase remediation guidance](https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable)
+- **WARN — leaked password protection disabled:** enable compromised-password checks in Supabase Auth password security settings, then verify the setting. [Supabase Auth guidance](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection)
+- **INFO — captain commission settings has RLS but no policies:** direct client access is denied, which is intentional while settings are served only by trusted server code. Do not add a broad authenticated SELECT policy just to silence the advisor. [Supabase RLS guidance](https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy)
+
+### Performance
+- **INFO — seven unindexed foreign keys:** `captain_commission_settings.updated_by`, `captain_commissions.settled_by`, `captain_commissions.wallet_transaction_id`, `order_items.product_id`, `stores.reviewed_by`, `wallet_cashout_requests.reviewed_by`, and `wallet_cashout_requests.wallet_transaction_id`. Review workload and add covering indexes in a separate staged migration. [Supabase guidance](https://supabase.com/docs/guides/database/database-linter?lint=0001_unindexed_foreign_keys)
+- **WARN — multiple permissive SELECT policies:** `order_items`, `orders`, `products`, and `stores` each have overlapping authenticated SELECT policies. Review policy predicates for equivalence before consolidating them; do not weaken ownership or public-approved listing rules. [Supabase guidance](https://supabase.com/docs/guides/database/database-linter?lint=0006_multiple_permissive_policies)
+- **INFO — nine unused indexes:** do not drop them solely because current usage counters are zero; reassess after representative production traffic and query-plan review. [Supabase guidance](https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index)
+
+The Health Advisor returned no findings at the time of this review. The migration history endpoint still returns an empty list despite existing application tables, so schema/history reconciliation remains mandatory.
+
+## 8. Production verification checklist
 
 Before enabling these features, verify:
 
