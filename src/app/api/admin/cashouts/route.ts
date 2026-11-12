@@ -99,11 +99,14 @@ export async function POST(request: Request) {
     }
     if (action === "mark_paid") {
       const { data: cashout, error: readError } = await auth.adminClient
-        .from("wallet_cashout_requests").select("id,user_id,cash_amount_iqd,status")
+        .from("wallet_cashout_requests").select("id,user_id,cash_amount_iqd,status,payout_method,payout_phone")
         .eq("id", requestId).maybeSingle();
       if (readError) throw readError;
       if (!cashout) return NextResponse.json({ error: "Cashout request not found" }, { status: 404 });
       if (cashout.status !== "approved") return NextResponse.json({ error: "Only approved requests can be marked paid" }, { status: 409 });
+      if ((cashout.payout_method !== "fastpay" && cashout.payout_method !== "fib") || !cashout.payout_phone) {
+        return NextResponse.json({ error: "This legacy cashout has no verified payout destination. Contact the requester before recording payment." }, { status: 409 });
+      }
       const { error } = await auth.adminClient.rpc("mark_wallet_cashout_paid", {
         p_request_id: requestId, p_admin_user_id: auth.user.id,
       });
