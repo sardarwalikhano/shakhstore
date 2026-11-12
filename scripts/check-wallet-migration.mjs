@@ -59,13 +59,13 @@ const checks = [
   ["payout clearing is not treated as bank balance", /Never interpret this balance as bank funds|not a bank balance/i.test(sql)],
   ["top-up migration stores SHA-256 receipt hashes", /add column if not exists receipt_sha256 text/i.test(topupSql)],
   ["top-up migration stores normalized payment references", /add column if not exists sender_reference_normalized text/i.test(topupSql)],
-  ["receipt hashes have a partial unique index", /create unique index if not exists wallet_topup_receipt_sha256_uidx[\\s\\S]+?where receipt_sha256 is not null/i.test(topupSql)],
-  ["provider-scoped normalized references have a unique index", /create unique index if not exists wallet_topup_payment_reference_uidx[\\s\\S]+?payment_method, sender_reference_normalized/i.test(topupSql)],
-  ["pending requests require integrity metadata", /status <> 'pending'[\\s\\S]+?receipt_sha256 is not null[\\s\\S]+?sender_reference_normalized is not null/i.test(topupSql)],
-  ["top-up approval refuses legacy rows without integrity metadata", /v_request\\.receipt_sha256 is null[\\s\\S]+?v_request\\.sender_reference_normalized is null/i.test(topupSql)],
-  ["top-up API computes a SHA-256 digest", /createHash\\("sha256"\\)/i.test(topupApi)],
-  ["top-up API requires and normalizes payment reference", /normalizedReference = senderReference\\.replace\\([\\s\\S]+?sender_reference_normalized: normalizedReference/i.test(topupApi)],
-  ["duplicate database keys return HTTP 409", /errorCode === "23505"[\\s\\S]+?status: 409/i.test(topupApi)],
+  ["receipt hashes have a partial unique index", topupSql.includes("create unique index if not exists wallet_topup_receipt_sha256_uidx") && topupSql.includes("where receipt_sha256 is not null")],
+  ["provider-scoped normalized references have a unique index", topupSql.includes("create unique index if not exists wallet_topup_payment_reference_uidx") && topupSql.includes("payment_method, sender_reference_normalized")],
+  ["pending requests require integrity metadata", topupSql.includes("status <> 'pending'") && topupSql.includes("receipt_sha256 is not null") && topupSql.includes("sender_reference_normalized is not null")],
+  ["top-up approval refuses legacy rows without integrity metadata", topupSql.includes("v_request.receipt_sha256 is null") && topupSql.includes("v_request.sender_reference_normalized is null")],
+  ["top-up API computes a SHA-256 digest", topupApi.includes('createHash("sha256")')],
+  ["top-up API requires and normalizes payment reference", topupApi.includes("normalizedReference = senderReference.replace") && topupApi.includes("sender_reference_normalized: normalizedReference")],
+  ["duplicate database keys return HTTP 409", topupApi.includes('errorCode === "23505"') && topupApi.includes("status: 409")],
 ];
 
 let failures = 0;
