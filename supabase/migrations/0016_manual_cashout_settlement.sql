@@ -41,7 +41,7 @@ returns uuid
 language plpgsql
 security definer
 set search_path = ''
-as $
+as $$
 declare
   v_from_id uuid;
   v_to_id uuid;
@@ -76,15 +76,24 @@ begin
   values ('user', p_to_user)
   on conflict (owner_id, currency) where owner_type = 'user' do nothing;
 
-  select id, balance_minor into v_from_id, v_from_balance
+  select id into v_from_id
   from public.wallet_accounts
-  where owner_type = 'user' and owner_id = p_from_user and currency = 'IQD'
-  for update;
+  where owner_type = 'user' and owner_id = p_from_user and currency = 'IQD';
 
   select id into v_to_id
   from public.wallet_accounts
-  where owner_type = 'user' and owner_id = p_to_user and currency = 'IQD'
+  where owner_type = 'user' and owner_id = p_to_user and currency = 'IQD';
+
+  -- Lock both wallet rows in deterministic order to avoid reverse-transfer deadlocks.
+  perform 1
+  from public.wallet_accounts
+  where id in (v_from_id, v_to_id)
+  order by id
   for update;
+
+  select balance_minor into v_from_balance
+  from public.wallet_accounts
+  where id = v_from_id;
 
   select coalesce(sum(requested_amount_iqd), 0)
     into v_reserved
@@ -129,7 +138,143 @@ begin
 
   return v_transaction_id;
 end;
-$;
+$$;
+
+-- Referral rewards also debit the post owner's wallet, so they must
+-- preserve pending and approved-but-unsettled cashout reservations.
+create or replace function public.settle_cash_referral_reward(
+  p_post_owner_user_id uuid,
+  p_referrer_user_id uuid,
+  p_total_iqd bigint,
+  p_idempotency_key text,
+  p_reference_id text
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_owner_account_id uuid;
+  v_referrer_account_id uuid;
+  v_platform_account_id uuid;
+  v_owner_balance bigint;
+  v_reserved bigint;
+  v_transaction_id uuid;
+  v_referrer_share bigint;
+  v_platform_share bigint;
+  v_existing_id uuid;
+begin
+  if p_post_owner_user_id is null or p_referrer_user_id is null
+     or p_post_owner_user_id = p_referrer_user_id then
+    raise exception 'Invalid reward participants';
+  end if;
+  if p_total_iqd is null or p_total_iqd <= 0 then
+    raise exception 'Reward amount must be positive';
+  end if;
+  if p_idempotency_key is null or length(trim(p_idempotency_key)) < 8 then
+    raise exception 'A valid idempotency key is required';
+  end if;
+
+  select id into v_existing_id
+  from public.wallet_transactions
+  where idempotency_key = p_idempotency_key;
+
+  if v_existing_id is not null then
+    return v_existing_id;
+  end if;
+
+  v_referrer_share := floor(p_total_iqd * 0.75)::bigint;
+  v_platform_share := p_total_iqd - v_referrer_share;
+
+  insert into public.wallet_accounts(owner_type, owner_id)
+  values ('user', p_post_owner_user_id)
+  on conflict (owner_id, currency) where owner_type = 'user' do nothing;
+
+  insert into public.wallet_accounts(owner_type, owner_id)
+  values ('user', p_referrer_user_id)
+  on conflict (owner_id, currency) where owner_type = 'user' do nothing;
+
+  insert into public.wallet_accounts(owner_type, owner_id)
+  values ('platform', null)
+  on conflict (currency) where owner_type = 'platform' do nothing;
+
+  select id into v_owner_account_id
+  from public.wallet_accounts
+  where owner_type = 'user' and owner_id = p_post_owner_user_id and currency = 'IQD';
+
+  select id into v_referrer_account_id
+  from public.wallet_accounts
+  where owner_type = 'user' and owner_id = p_referrer_user_id and currency = 'IQD';
+
+  select id into v_platform_account_id
+  from public.wallet_accounts
+  where owner_type = 'platform' and currency = 'IQD';
+
+  -- Lock all participating accounts in one stable order.
+  perform 1
+  from public.wallet_accounts
+  where id in (v_owner_account_id, v_referrer_account_id, v_platform_account_id)
+  order by id
+  for update;
+
+  select balance_minor into v_owner_balance
+  from public.wallet_accounts
+  where id = v_owner_account_id;
+
+  select coalesce(sum(requested_amount_iqd), 0)
+    into v_reserved
+  from public.wallet_cashout_requests
+  where user_id = p_post_owner_user_id
+    and (
+      status = 'pending'
+      or (status = 'approved' and wallet_transaction_id is null)
+    );
+
+  if v_owner_balance - v_reserved < p_total_iqd then
+    raise exception 'Insufficient available wallet balance after cashout reservations';
+  end if;
+
+  insert into public.wallet_transactions(
+    idempotency_key, transaction_type, reference_id, description
+  ) values (
+    p_idempotency_key,
+    'cash_referral_reward',
+    p_reference_id,
+    'Cash reward split: 75% referrer / 25% platform'
+  )
+  on conflict (idempotency_key) do nothing
+  returning id into v_transaction_id;
+
+  if v_transaction_id is null then
+    select id into v_existing_id
+    from public.wallet_transactions
+    where idempotency_key = p_idempotency_key;
+    return v_existing_id;
+  end if;
+
+  update public.wallet_accounts
+  set balance_minor = balance_minor - p_total_iqd
+  where id = v_owner_account_id;
+
+  update public.wallet_accounts
+  set balance_minor = balance_minor + v_referrer_share
+  where id = v_referrer_account_id;
+
+  update public.wallet_accounts
+  set balance_minor = balance_minor + v_platform_share
+  where id = v_platform_account_id;
+
+  insert into public.wallet_entries(transaction_id, account_id, entry_type, amount_minor)
+  values
+    (v_transaction_id, v_owner_account_id, 'debit', p_total_iqd),
+    (v_transaction_id, v_referrer_account_id, 'credit', v_referrer_share),
+    (v_transaction_id, v_platform_account_id, 'credit', v_platform_share);
+
+  return v_transaction_id;
+end;
+$$;
+
 
 -- Pending and newly approved-but-unpaid requests reserve the full amount.
 -- Legacy approved requests that already have a ledger settlement are not reserved again.
