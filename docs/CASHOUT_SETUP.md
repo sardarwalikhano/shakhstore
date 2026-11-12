@@ -30,6 +30,7 @@ Before a production change:
 - Take and verify a restorable database backup.
 - Compare the exact live schema with all prerequisite migrations.
 - Confirm the external wallet account is the recorded FastPay/FIB cash asset pool and reconcile its opening balance to actual funds held.
+- Review all historical top-up and cashout transactions against actual FastPay/FIB statements. Migration 0015 corrects future cashout postings only; it does not rewrite historical ledger entries or automatically repair the external account balance.
 - Test on a separate staging project with realistic top-up, cashout, rejection, and retry scenarios.
 - Prepare a tested rollback/recovery plan.
 
@@ -74,6 +75,7 @@ Before enabling these features, verify:
 - [ ] Database backup has been restored successfully in a recovery test.
 - [ ] Migration history is reconciled with the actual live schema.
 - [ ] All new migrations have passed staging tests in order.
+- [ ] Historical external-account balance is reconciled to real payment statements.
 - [ ] External FastPay/FIB asset opening balance matches actual funds held.
 - [ ] Private receipt bucket and access policies are verified.
 - [ ] Intended administrator has trusted `app_metadata.role = super_admin`.
