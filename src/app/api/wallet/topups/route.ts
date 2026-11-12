@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -52,6 +52,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "بڕی پارە دەبێت لە ١ تا ١٠٠,٠٠٠,٠٠٠ دینار بێت." }, { status: 400 });
     }
     if (method !== "fastpay" && method !== "fib") return NextResponse.json({ error: "Payment method is invalid" }, { status: 400 });
+    const senderReference = typeof reference === "string" ? reference.trim() : "";
+    const normalizedReference = senderReference.replace(/\s+/g, "").toUpperCase();
+    if (!/^[A-Z0-9._/-]{3,120}$/.test(normalizedReference)) {
+      return NextResponse.json({ error: "ژمارەی مامەڵەی FastPay/FIB پێویستە و دەبێت ٣ تا ١٢٠ پیت/ژمارە بێت." }, { status: 400 });
+    }
     if (!(receipt instanceof File) || receipt.size <= 0 || receipt.size > 5 * 1024 * 1024) {
       return NextResponse.json({ error: "وەسڵی پارەدان پێویستە و نابێت لە ٥MB زیاتر بێت." }, { status: 400 });
     }
@@ -75,6 +80,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "ناوەڕۆکی فایل لەگەڵ جۆری ڕاگەیەنراوی وەسڵ ناگونجێت." }, { status: 400 });
     }
 
+    const receiptSha256 = createHash("sha256").update(bytes).digest("hex");
     const ext = receipt.type === "image/jpeg" ? "jpg" : receipt.type === "application/pdf" ? "pdf" : receipt.type.split("/")[1];
     uploadedPath = c.user.id + "/" + randomUUID() + "." + ext;
     const { error: uploadError } = await c.db.storage.from("wallet-topup-receipts")
@@ -86,7 +92,9 @@ export async function POST(request: Request) {
       payment_method: method,
       amount_iqd: amount,
       receipt_path: uploadedPath,
-      sender_reference: typeof reference === "string" ? reference.trim().slice(0, 120) || null : null,
+      receipt_sha256: receiptSha256,
+      sender_reference: senderReference,
+      sender_reference_normalized: normalizedReference,
       user_note: typeof note === "string" ? note.trim().slice(0, 1000) || null : null,
     }).select("id,payment_method,amount_iqd,status,created_at").single();
     if (error) throw error;
@@ -100,6 +108,16 @@ export async function POST(request: Request) {
         const db = createClient(url, service, { auth: { autoRefreshToken: false, persistSession: false } });
         await db.storage.from("wallet-topup-receipts").remove([uploadedPath]);
       } catch {}
+    }
+    const errorCode =
+      typeof error === "object" && error !== null && "code" in error
+        ? String((error as { code?: unknown }).code ?? "")
+        : "";
+    if (errorCode === "23505") {
+      return NextResponse.json(
+        { error: "ئەم وەسڵە یان ژمارەی مامەڵەیە پێشتر تۆمارکراوە. تکایە ژمارەی مامەڵەکە بپشکنە." },
+        { status: 409 },
+      );
     }
     return NextResponse.json({ error: "ناردنی داواکاریی پرکردنەوەی جزدان سەرکەوتوو نەبوو." }, { status: 500 });
   }
