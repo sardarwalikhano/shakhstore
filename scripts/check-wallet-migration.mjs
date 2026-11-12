@@ -15,6 +15,16 @@ const topupApiPath = resolve(process.cwd(), "src/app/api/wallet/topups/route.ts"
 const topupApi = readFileSync(topupApiPath, "utf8");
 const topupPagePath = resolve(process.cwd(), "src/app/dashboard/wallet/top-up/page.tsx");
 const topupPage = readFileSync(topupPagePath, "utf8");
+const dashboardAuthPath = resolve(process.cwd(), "src/lib/server/dashboard-auth.ts");
+const dashboardAuth = readFileSync(dashboardAuthPath, "utf8");
+const dashboardLayoutPath = resolve(process.cwd(), "src/app/dashboard/layout.tsx");
+const dashboardLayout = readFileSync(dashboardLayoutPath, "utf8");
+const topupsAdminLayoutPath = resolve(process.cwd(), "src/app/dashboard/admin/wallet-topups/layout.tsx");
+const topupsAdminLayout = readFileSync(topupsAdminLayoutPath, "utf8");
+const cashoutsAdminLayoutPath = resolve(process.cwd(), "src/app/dashboard/admin/cashouts/layout.tsx");
+const cashoutsAdminLayout = readFileSync(cashoutsAdminLayoutPath, "utf8");
+const dashboardPagePath = resolve(process.cwd(), "src/app/dashboard/page.tsx");
+const dashboardPage = readFileSync(dashboardPagePath, "utf8");
 
 function functionBody(name) {
   const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -72,6 +82,11 @@ const checks = [
   ["duplicate database keys return HTTP 409", topupApi.includes('errorCode === "23505"') && topupApi.includes("status: 409")],
   ["top-up UI requires external transaction reference", topupPage.includes('id="topup-reference"') && topupPage.includes("minLength={3}") && topupPage.includes('required dir="ltr"')],
   ["top-up history displays submitted payment reference", topupPage.includes("item.sender_reference") && topupPage.includes("Reference:")],
+  ["dashboard guard verifies the current Supabase user server-side", dashboardAuth.includes("supabase.auth.getUser()") && dashboardAuth.includes('redirect("/login")')],
+  ["all dashboard routes use a force-dynamic server guard", dashboardLayout.includes('dynamic = "force-dynamic"') && dashboardLayout.includes("await requireDashboardUser()")],
+  ["top-up review page is restricted to super_admin", topupsAdminLayout.includes('requireDashboardUser(["super_admin"])')],
+  ["cashout management page is restricted to super_admin", cashoutsAdminLayout.includes('requireDashboardUser(["super_admin"])')],
+  ["cashout management link is shown only in the super-admin card group", dashboardPage.includes('...(role==="super_admin"?[{title:"بەڕێوەبردنی Cashout"') && !dashboardPage.includes('...(admin?[{title:"بەڕێوەبردنی Cashout"')],
 ];
 
 let failures = 0;
