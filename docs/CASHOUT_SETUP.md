@@ -63,6 +63,7 @@ Grant the role only after identifying and verifying the intended Auth user UUID.
 - 1 IQD approved payment = 1 IQD wallet credit.
 - A user submits an amount and a private receipt.
 - No wallet credit occurs until Super Admin verifies the actual received payment and approves the request.
+- M12 idempotency prevents approving the same request twice, but it does not yet prevent the same external receipt/payment reference from being submitted under two different request IDs. This is a production rollout blocker: add database-enforced receipt SHA-256 and normalized payment-reference uniqueness, then test duplicate submissions and concurrent approvals on staging. Until that safeguard is shipped, Super Admin must not rely on request-level idempotency alone to detect duplicate external payments.
 - Receipts must remain in the private `wallet-topup-receipts` Storage bucket; do not make this bucket public.
 
 ## 5. Cashout workflow
@@ -102,6 +103,7 @@ Before enabling these features, verify:
 - [ ] Ordinary authenticated user receives HTTP 403 from admin APIs.
 - [ ] Signed-out request receives HTTP 401.
 - [ ] Top-up receipt review credits exactly once; reject credits nothing.
+- [ ] Duplicate top-up receipt hashes and external payment references are rejected at database level, including concurrent submissions.
 - [ ] Cashout rejection releases the reservation without debiting the wallet.
 - [ ] Cashout approval leaves user/platform/payout-clearing balances and ledger entries unchanged.
 - [ ] Mark-paid is available only after approval and a verified external manual payout; it posts the 75/25 settlement exactly once.
