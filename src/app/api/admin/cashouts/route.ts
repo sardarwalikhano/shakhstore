@@ -131,8 +131,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid admin note" }, { status: 400 });
     }
 
-    // Read the recipient before the atomic RPC. The RPC itself locks the row,
-    // checks that it is still pending, and performs the financial settlement.
+    // Read the recipient before the atomic RPC. The RPC locks the row and
+    // changes workflow status only; ledger settlement happens after manual payout.
     const { data: cashout, error: cashoutError } = await auth.adminClient
       .from("wallet_cashout_requests")
       .select("id,user_id,requested_amount_iqd,cash_amount_iqd,status")
@@ -173,8 +173,8 @@ export async function POST(request: Request) {
         data: { cashout_request_id: cashout.id, decision },
       }]);
     } catch (notificationError) {
-      // The review and ledger settlement are already committed.
-      console.error("Cashout reviewed but notification delivery failed:", notificationError);
+      // Approval is workflow-only; no wallet settlement occurs until mark-paid.
+      console.error("Cashout review saved but notification delivery failed:", notificationError);
     }
 
     return NextResponse.json({ success: true, transactionId: data });
