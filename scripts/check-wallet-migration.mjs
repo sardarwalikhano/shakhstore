@@ -23,6 +23,8 @@ const adminLayoutPath = resolve(process.cwd(), "src/app/dashboard/admin/layout.t
 const adminLayout = readFileSync(adminLayoutPath, "utf8");
 const topupsAdminLayoutPath = resolve(process.cwd(), "src/app/dashboard/admin/wallet-topups/layout.tsx");
 const topupsAdminLayout = readFileSync(topupsAdminLayoutPath, "utf8");
+const usersAdminLayoutPath = resolve(process.cwd(), "src/app/dashboard/admin/users/layout.tsx");
+const usersAdminLayout = readFileSync(usersAdminLayoutPath, "utf8");
 const cashoutsAdminLayoutPath = resolve(process.cwd(), "src/app/dashboard/admin/cashouts/layout.tsx");
 const cashoutsAdminLayout = readFileSync(cashoutsAdminLayoutPath, "utf8");
 const dashboardPagePath = resolve(process.cwd(), "src/app/dashboard/page.tsx");
@@ -107,6 +109,7 @@ const checks = [
   ["admin route layout is force-dynamic", adminLayout.includes('dynamic = "force-dynamic"')],
   ["top-up review page is restricted to super_admin", topupsAdminLayout.includes('requireDashboardUser(["super_admin"])')],
   ["cashout management page is restricted to super_admin", cashoutsAdminLayout.includes('requireDashboardUser(["super_admin"])')],
+  ["user role management page is restricted to super_admin", usersAdminLayout.includes('requireDashboardUser(["super_admin"])')],
   ["captain commission API permits only trusted admin roles", commissionAdminApi.includes('user.app_metadata?.role') && commissionAdminApi.includes('role !== "admin" && role !== "super_admin"')],
   ["delivery assignment API permits only trusted admin roles", deliveriesAdminApi.includes('user.app_metadata?.role!=="super_admin"&&user.app_metadata?.role!=="admin"')],
   ["store review API permits only trusted admin roles", storesAdminApi.includes('user.app_metadata?.role!=="super_admin"&&user.app_metadata?.role!=="admin"')],
