@@ -20,12 +20,16 @@ begin
       check (
         (receipt_sha256 is null or receipt_sha256 ~ '^[0-9a-f]{64}$')
         and (
+          (sender_reference is null or char_length(sender_reference) <= 120)
+        and (
           sender_reference_normalized is null
           or (
-            sender_reference is not null
+            char_length(sender_reference_normalized) between 3 and 120
+            and sender_reference is not null
             and sender_reference_normalized =
               upper(regexp_replace(btrim(sender_reference), '[[:space:]]+', '', 'g'))
           )
+        )
         )
         and (
           status <> 'pending'
