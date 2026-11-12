@@ -78,7 +78,7 @@ export default function WalletCashoutPage() {
           </div></div>
           <div><label htmlFor="cashout-phone" className="mb-2 block text-sm font-bold">ژمارەی ئەکاونتی خۆت</label><input id="cashout-phone" type="tel" required minLength={7} maxLength={24} value={phone} onChange={e=>setPhone(e.target.value)} dir="ltr" className="w-full rounded-xl border border-slate-300 p-3 text-left" placeholder="07xxxxxxxxx" /></div>
           <div><label htmlFor="cashout-note" className="mb-2 block text-sm font-bold">تێبینی (ئارەزوومەندانە)</label><textarea id="cashout-note" rows={2} maxLength={1000} value={note} onChange={e=>setNote(e.target.value)} className="w-full rounded-xl border border-slate-300 p-3" /></div>
-          <p className="text-xs leading-6 text-slate-500">لە کاتی پەسەندکردندا ١٠٠٪ی بڕی داواکراو لە جزدان کەم دەکرێتەوە و ٧٥٪ بۆ پارەدان تەرخان دەکرێت. دۆخی «پارە نێردرا» تەنها دوای ناردنی ڕاستەقینە لەلایەن Super Admin ـەوە دەگۆڕدرێت.</p>
+          <p className="text-xs leading-6 text-slate-500">پەسەندکردن تەنها ڕێگەدانە و هیچ بڕێک لە Wallet کەم ناکاتەوە. بڕی داواکراو تا ناردنی پارە لە دەرەوەی پلاتفۆرم لە باڵانسی بەردەستت رزێرف دەکرێت. دوای ناردنی ٧٥٪ بە دەستی Super Admin و پشتڕاستکردنەوەی ئەوە، دۆخ دەگۆڕدرێت بۆ «پارە نێردرا» و حسابداریی ناوخۆیی ٧٥/٢٥ تۆمار دەکرێت. IQD لە SHAKH تەنها باڵانسی حسابداریی ناوخۆییە، نە باڵانسی بانکی.</p>
           <button disabled={sending} className="w-full rounded-xl bg-orange-600 px-5 py-3 font-bold text-white disabled:opacity-50">{sending?"ناردن...":"ناردنی داواکاری کاش ئاوت"}</button>
         </form>
       </section>
