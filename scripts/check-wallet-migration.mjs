@@ -33,6 +33,15 @@ const storesAdminApi = readFileSync(resolve(process.cwd(), "src/app/api/admin/st
 const usersAdminApi = readFileSync(resolve(process.cwd(), "src/app/api/admin/users/route.ts"), "utf8");
 const cashoutsAdminApi = readFileSync(resolve(process.cwd(), "src/app/api/admin/cashouts/route.ts"), "utf8");
 const topupsAdminApi = readFileSync(resolve(process.cwd(), "src/app/api/admin/wallet-topups/route.ts"), "utf8");
+const captainLayout = readFileSync(resolve(process.cwd(), "src/app/dashboard/captain/layout.tsx"), "utf8");
+const merchantLayout = readFileSync(resolve(process.cwd(), "src/app/dashboard/merchant/layout.tsx"), "utf8");
+const productsLayout = readFileSync(resolve(process.cwd(), "src/app/dashboard/products/layout.tsx"), "utf8");
+const storeLayout = readFileSync(resolve(process.cwd(), "src/app/dashboard/store/layout.tsx"), "utf8");
+const captainDeliveriesApi = readFileSync(resolve(process.cwd(), "src/app/api/captain/deliveries/route.ts"), "utf8");
+const captainEarningsApi = readFileSync(resolve(process.cwd(), "src/app/api/captain/earnings/route.ts"), "utf8");
+const merchantOrdersApi = readFileSync(resolve(process.cwd(), "src/app/api/merchant/orders/route.ts"), "utf8");
+const storesApi = readFileSync(resolve(process.cwd(), "src/app/api/stores/route.ts"), "utf8");
+
 
 
 function functionBody(name) {
@@ -104,6 +113,15 @@ const checks = [
   ["user role administration API requires super_admin", usersAdminApi.includes('user.app_metadata?.role !== "super_admin"')],
   ["cashout API requires super_admin", cashoutsAdminApi.includes('user.app_metadata?.role !== "super_admin"')],
   ["top-up review API requires super_admin", topupsAdminApi.includes('user.app_metadata?.role !== "super_admin"')],
+  ["captain dashboard pages require the captain role", captainLayout.includes('requireDashboardUser(["captain"])')],
+  ["merchant dashboard pages allow only merchant and admin roles", ["restaurant","supermarket","produce_vendor","meat_seafood_vendor","admin","super_admin"].every((role) => merchantLayout.includes('"' + role + '"'))],
+  ["product management pages exclude customer accounts", ["restaurant","supermarket","produce_vendor","meat_seafood_vendor","admin","super_admin"].every((role) => productsLayout.includes('"' + role + '"'))],
+  ["store onboarding pages allow only merchant roles", ["restaurant","supermarket","produce_vendor","meat_seafood_vendor"].every((role) => storeLayout.includes('"' + role + '"')) && !storeLayout.includes('"customer"') && !storeLayout.includes('"admin"')],
+  ["captain delivery API verifies trusted captain role", captainDeliveriesApi.includes('user.app_metadata?.role!=="captain"')],
+  ["captain earnings API verifies trusted captain role", captainEarningsApi.includes('user.app_metadata?.role !== "captain"')],
+  ["merchant orders API checks trusted merchant or admin role", merchantOrdersApi.includes("MERCHANT_ROLES.includes(role)") && merchantOrdersApi.includes('role!=="admin"&&role!=="super_admin"')],
+  ["store API binds submitted store type to the trusted merchant role", storesApi.includes('TYPES.includes(role as typeof TYPES[number])') && storesApi.includes("storeType!==role")],
+
 
   ["cashout management link is shown only in the super-admin card group", dashboardPage.includes('...(role==="super_admin"?[{title:"بەڕێوەبردنی Cashout"') && !dashboardPage.includes('...(admin?[{title:"بەڕێوەبردنی Cashout"')],
 ];
