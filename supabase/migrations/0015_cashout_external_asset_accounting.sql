@@ -26,7 +26,7 @@ begin
   if p_admin_user_id is null then
     raise exception 'Super Admin identity is required';
   end if;
-  if p_decision not in ('approve', 'reject') then
+  if p_decision is null or p_decision not in ('approve', 'reject') then
     raise exception 'Decision must be approve or reject';
   end if;
 
