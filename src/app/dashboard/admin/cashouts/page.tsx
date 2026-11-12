@@ -10,7 +10,10 @@ type Cashout = {
   requested_amount_iqd: number;
   cash_amount_iqd: number;
   platform_fee_iqd: number;
-  status: "pending" | "approved" | "rejected";
+  status: "pending" | "approved" | "paid" | "rejected";
+  payout_method: "fastpay" | "fib" | null;
+  payout_phone: string | null;
+  paid_at: string | null;
   user_note: string | null;
   admin_note: string | null;
   created_at: string;
@@ -46,10 +49,8 @@ export default function AdminCashoutsPage() {
 
   useEffect(() => { void loadRequests(); }, [loadRequests]);
 
-  async function review(requestId: string, decision: "approve" | "reject") {
-    const prompt = decision === "approve"
-      ? "دڵنیایت لە پەسەندکردنی ئەم داواکارییە؟"
-      : "دڵنیایت لە ڕەتکردنەوەی ئەم داواکارییە؟";
+  async function review(requestId: string, decision: "approve" | "reject" | "mark_paid") {
+    const prompt = decision === "approve" ? "دڵنیایت لە پەسەندکردنی ئەم داواکارییە؟" : decision === "reject" ? "دڵنیایت لە ڕەتکردنەوەی ئەم داواکارییە؟" : "دڵنیایت پارەکەت ناردووە و دەتەوێت دۆخی تەواوبوون تۆمار بکەیت؟";
     if (!window.confirm(prompt)) return;
 
     setBusyId(requestId);
@@ -61,13 +62,14 @@ export default function AdminCashoutsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           requestId,
-          decision,
+          decision: decision === "mark_paid" ? undefined : decision,
+          action: decision === "mark_paid" ? "mark_paid" : undefined,
           note: notes[requestId] ?? "",
         }),
       });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error ?? "کردارەکە سەرکەوتوو نەبوو");
-      setNotice(decision === "approve" ? "داواکارییەکە پەسەند کرا." : "داواکارییەکە ڕەتکرایەوە.");
+      setNotice(decision === "approve" ? "داواکارییەکە پەسەند کرا؛ پارەکە هێشتا دەبێت بنێردرێت." : decision === "reject" ? "داواکارییەکە ڕەتکرایەوە." : "ناردنی پارە تۆمار کرا.");
       await loadRequests();
     } catch (err) {
       setError(err instanceof Error ? err.message : "هەڵەیەک ڕوویدا");
@@ -104,7 +106,7 @@ export default function AdminCashoutsPage() {
           </div>
           <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
             <div className="flex items-center justify-between text-emerald-800"><span>پەسەندکراو</span><CheckCircle2 size={20} /></div>
-            <p className="mt-3 text-3xl font-black text-emerald-900">{requests.filter((item) => item.status === "approved").length}</p>
+            <p className="mt-3 text-3xl font-black text-emerald-900">{requests.filter((item) => (item.status === "approved" || item.status === "paid")).length}</p>
           </div>
         </section>
 
@@ -130,8 +132,8 @@ export default function AdminCashoutsPage() {
                   <p className="mt-1 text-xs text-slate-500" dir="ltr">{item.id}</p>
                   <p className="mt-1 text-xs text-slate-500">{new Date(item.created_at).toLocaleString("ckb-IQ")}</p>
                 </div>
-                <span className={`rounded-full px-3 py-1 text-xs font-bold ${item.status === "pending" ? "bg-amber-100 text-amber-800" : item.status === "approved" ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-800"}`}>
-                  {item.status === "pending" ? "چاوەڕوان" : item.status === "approved" ? "پەسەندکراو" : "ڕەتکراوە"}
+                <span className={`rounded-full px-3 py-1 text-xs font-bold ${item.status === "pending" ? "bg-amber-100 text-amber-800" : item.status === "approved" || item.status === "paid" ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-800"}`}>
+                  {item.status === "pending" ? "چاوەڕوان" : item.status === "approved" ? "پەسەندکراو — پارە نە نێردراوە" : item.status === "paid" ? "پارە نێردرا" : "ڕەتکراوە"}
                 </span>
               </div>
 
@@ -141,16 +143,19 @@ export default function AdminCashoutsPage() {
                 <div className="rounded-xl bg-orange-50 p-4"><p className="text-xs text-orange-700">٢٥٪ بۆ شاخ</p><p className="mt-1 text-lg font-black text-orange-900">{money(item.platform_fee_iqd)}</p></div>
               </div>
 
+              {item.payout_method && <div className="mt-4 rounded-xl border border-orange-200 bg-orange-50 p-4"><p className="text-sm font-bold text-orange-900">شوێنی ناردنی پارە</p><p className="mt-1 text-sm text-orange-900">{item.payout_method.toUpperCase()} · <span dir="ltr">{item.payout_phone}</span></p><p className="mt-1 text-xs text-orange-800">بڕی پێویست بۆ ناردن: {money(item.cash_amount_iqd)}</p></div>}
               {item.user_note && <p className="mt-4 text-sm text-slate-600">تێبینی بەکارهێنەر: {item.user_note}</p>}
+              {item.paid_at && <p className="mt-2 text-sm text-emerald-700">پارە نێردرا: {new Date(item.paid_at).toLocaleString("ckb-IQ")}</p>}
               {item.admin_note && <p className="mt-2 text-sm text-slate-600">تێبینی بەڕێوەبەر: {item.admin_note}</p>}
 
-              {item.status === "pending" && (
+              {(item.status === "pending" || item.status === "approved") && (
                 <div className="mt-5 border-t border-slate-100 pt-4">
                   <label className="mb-2 block text-sm font-bold text-slate-700" htmlFor={`note-${item.id}`}>تێبینی Super Admin (ئارەزوومەندانە)</label>
                   <textarea id={`note-${item.id}`} value={notes[item.id] ?? ""} onChange={(event) => setNotes((current) => ({ ...current, [item.id]: event.target.value }))} rows={2} maxLength={1000} className="w-full rounded-xl border border-slate-200 p-3 text-sm outline-none focus:border-orange-400" placeholder="تێبینی بنووسە..." />
                   <div className="mt-3 flex flex-wrap gap-2">
-                    <button onClick={() => void review(item.id, "approve")} disabled={busyId !== null} className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-3 text-sm font-bold text-white disabled:opacity-50"><CheckCircle2 size={17} />{busyId === item.id ? "تکایە چاوەڕێ بکە..." : "پەسەندکردن"}</button>
-                    <button onClick={() => void review(item.id, "reject")} disabled={busyId !== null} className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-5 py-3 text-sm font-bold text-white disabled:opacity-50"><XCircle size={17} />ڕەتکردنەوە</button>
+                    {item.status === "pending" && <button onClick={() => void review(item.id, "approve")} disabled={busyId !== null} className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-3 text-sm font-bold text-white disabled:opacity-50"><CheckCircle2 size={17} />{busyId === item.id ? "تکایە چاوەڕێ بکە..." : "پەسەندکردن"}</button>
+                    <button onClick={() => void review(item.id, "reject")} disabled={busyId !== null} className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-5 py-3 text-sm font-bold text-white disabled:opacity-50"><XCircle size={17} />ڕەتکردنەوە</button>}
+                    {item.status === "approved" && <button onClick={() => void review(item.id, "mark_paid")} disabled={busyId !== null} className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white disabled:opacity-50">پارە نێردرا / تەواوبوو</button>}
                   </div>
                 </div>
               )}
