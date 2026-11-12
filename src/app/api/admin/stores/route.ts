@@ -44,16 +44,22 @@ export async function PATCH(request:Request){
       if(findFeeError)throw findFeeError;
       if(!existing)return NextResponse.json({error:"Store not found"},{status:404});
       if(existing.status!=="approved")return NextResponse.json({error:"Only approved stores can have a delivery fee configured"},{status:409});
-      const {data,error}=await ctx.db.from("stores").update({delivery_fee_iqd:fee}).eq("id",v.storeId).select("id,delivery_fee_iqd").single();
+      const {data,error}=await ctx.db.from("stores").update({delivery_fee_iqd:fee})
+        .eq("id",v.storeId).eq("status","approved")
+        .select("id,delivery_fee_iqd").maybeSingle();
       if(error)throw error;
+      if(!data)return NextResponse.json({error:"Store status changed. Refresh and try again."},{status:409});
       return NextResponse.json({success:true,store:data});
     }
     if(!["approved","rejected","suspended"].includes(String(v.status)))return NextResponse.json({error:"Invalid status"},{status:400});
     const {data:store,error:findError}=await ctx.db.from("stores").select("id,status,owner_id,store_type").eq("id",v.storeId).maybeSingle();
     if(findError)throw findError;if(!store)return NextResponse.json({error:"Store not found"},{status:404});
     if(store.status!=="pending"&&v.status!=="suspended")return NextResponse.json({error:"Only pending applications can be approved or rejected"},{status:409});
-    const {data,error}=await ctx.db.from("stores").update({status:v.status,admin_note:typeof v.note==="string"?v.note.trim().slice(0,1000):null,reviewed_by:ctx.user.id,reviewed_at:new Date().toISOString()}).eq("id",v.storeId).select("id,status,admin_note,reviewed_at").single();
+    const {data,error}=await ctx.db.from("stores").update({status:v.status,admin_note:typeof v.note==="string"?v.note.trim().slice(0,1000):null,reviewed_by:ctx.user.id,reviewed_at:new Date().toISOString()})
+      .eq("id",v.storeId).eq("status",store.status)
+      .select("id,status,admin_note,reviewed_at").maybeSingle();
     if(error)throw error;
+    if(!data)return NextResponse.json({error:"Store status changed by another admin. Refresh and review the latest status."},{status:409});
     return NextResponse.json({success:true,store:data});
   }catch(e){console.error("Store review failed",e);return NextResponse.json({error:"Unable to review store"},{status:500});}
 }

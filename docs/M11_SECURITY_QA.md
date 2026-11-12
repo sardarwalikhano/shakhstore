@@ -10,6 +10,7 @@
 - Public health responses no longer reveal whether the privileged Supabase service-role key is configured.
 - Merchant product updates re-apply owner and store filters in the database UPDATE predicate rather than relying only on a preceding authorization read.
 - Merchant order-status updates re-apply the set of owned store IDs in the UPDATE predicate and continue to enforce the expected previous order status.
+- Admin store review and delivery-fee updates re-apply the expected current store status in the UPDATE predicate. Stale concurrent review or suspension attempts return 409 rather than overwriting the latest state.
 - Customer cancellation is implemented through additive migration `0011_customer_order_cancellation.sql` and `POST /api/orders/cancel`. The database function locks the owned order row, permits cancellation only while `pending`, restores the aggregated product quantities, and changes status to `cancelled` in the same transaction. A failed inventory restoration rolls back the entire cancellation. The customer orders page exposes the action only for pending orders.
 - Existing server-side role checks, row-level security, service-role isolation, wallet RPCs, and append-only migrations remain unchanged.
 
