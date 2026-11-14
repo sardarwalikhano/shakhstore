@@ -239,7 +239,7 @@ const checks = [
   ["platform market updates verify owner and null store scope", productByIdApi.includes("current.owner_id!==c.user.id||current.store_id!==null") && productByIdApi.includes('updateQuery.eq("owner_id",c.user.id).is("store_id",null)')],
   ["platform market deletion is scoped to the owning super_admin", productByIdApi.includes('q=q.eq("owner_id",c.user.id).is("store_id",null)')],
   ["platform market UI uses its isolated product scope and omits store selection", productsPage.includes('"/api/products?scope=platform"') && productsPage.includes("platform_market:platformMarket") && productsPage.includes("isAdmin&&!platformMarket")],
-  ["public catalog paginates admin users before loading SHAKH STORE platform posts", productsApi.includes("for(let page=1;;page++)") && productsApi.includes("authUsers.users.length<200")],
+  ["public catalog paginates admin users before loading SHAKH STORE platform posts", productsApi.includes("for(let page=1;;page++)") && productsApi.includes('u.app_metadata?.role==="super_admin"') && productsApi.includes("authUsers.users.length<200")],
   ["cashout management link is shown only in the super-admin card group", dashboardPage.includes('...(role==="super_admin"?[{title:"بازاڕی تایبەتی شاخ ستۆر"') && dashboardPage.includes('href:"/dashboard/admin/cashouts"') && !dashboardPage.includes('...(admin?[{title:"بەڕێوەبردنی Cashout"')],
 ];
 
