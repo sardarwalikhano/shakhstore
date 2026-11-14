@@ -22,10 +22,12 @@ export async function PATCH(request:Request,{params}:Params){
  try{
   const c=await context();if("response" in c)return c.response;
   const {id}=await params;if(!/^[0-9a-f-]{36}$/i.test(id))return NextResponse.json({error:"Invalid product ID"},{status:400});
-  const {data:current,error:findError}=await c.db.from("products").select("id,owner_id,store_id").eq("id",id).maybeSingle();
+  const {data:current,error:findError}=await c.db.from("products").select("id,owner_id,store_id,category").eq("id",id).maybeSingle();
   if(findError)throw findError;if(!current)return NextResponse.json({error:"Product not found"},{status:404});
   let merchantStoreId: string | null = null;
+  const merchantCategory = productCategoryForRole(c.role);
   if(c.role!=="super_admin"&&c.role!=="admin"){
+   if(!merchantCategory || current.category!==merchantCategory) return NextResponse.json({error:"تەنها بەرهەمەکانی پۆلێنی تایبەت بە دوکانەکەت دەتوانیت بەڕێوەببەیت."},{status:403});
    if(current.owner_id!==c.user.id)return NextResponse.json({error:"Forbidden"},{status:403});
    const {data:store,error:storeError}=await c.db.from("stores").select("id").eq("owner_id",c.user.id).eq("status","approved").maybeSingle();
    if(storeError)throw storeError;
@@ -51,8 +53,8 @@ export async function PATCH(request:Request,{params}:Params){
   let updateQuery = c.db.from("products").update(patch).eq("id",id);
   // Re-apply merchant ownership in the UPDATE predicate. The earlier read is
   // only for authorization feedback; it is not the final write authorization.
-  if (merchantStoreId) {
-   updateQuery = updateQuery.eq("owner_id",c.user.id).eq("store_id",merchantStoreId);
+  if (merchantStoreId && merchantCategory) {
+   updateQuery = updateQuery.eq("owner_id",c.user.id).eq("store_id",merchantStoreId).eq("category",merchantCategory);
   }
   const {data,error}=await updateQuery.select("id,name,description,category,price_iqd,image_url,sku,stock_quantity,is_active,updated_at").maybeSingle();
   if(error)throw error;
@@ -69,7 +71,9 @@ export async function DELETE(_request:Request,{params}:Params){
    const {data:store,error:storeError}=await c.db.from("stores").select("id").eq("owner_id",c.user.id).eq("status","approved").maybeSingle();
    if(storeError)throw storeError;
    if(!store)return NextResponse.json({error:"Store inactive"},{status:403});
-   q=q.eq("owner_id",c.user.id).eq("store_id",store.id);
+   const requiredCategory=productCategoryForRole(c.role);
+   if(!requiredCategory)return NextResponse.json({error:"Merchant product category is not configured"},{status:403});
+   q=q.eq("owner_id",c.user.id).eq("store_id",store.id).eq("category",requiredCategory);
   }
   const {data,error}=await q.select("id").maybeSingle();
   if(error)throw error;if(!data)return NextResponse.json({error:"Product not found or access denied"},{status:404});
