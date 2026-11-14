@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import { createInAppNotifications } from "@/lib/server/notifications";
+import { isWithinServiceRadius, isValidGeoPoint } from "@/lib/service-zone";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -69,6 +70,20 @@ export async function POST(request: Request) {
     if (address.length < 5 || address.length > 1000) {
       return NextResponse.json({ error: "ناونیشانی گەیاندن پێویستە." }, { status: 400 });
     }
+
+    const phone = typeof v.customer_phone === "string" ? v.customer_phone.trim() : "";
+    const phoneDigits = phone.replace(/[^0-9]/g, "");
+    if (phone.length < 7 || phone.length > 24 || !/^[0-9+() -]+$/.test(phone) || phoneDigits.length < 7 || phoneDigits.length > 15) {
+      return NextResponse.json({ error: "تکایە ژمارەی مۆبایلێکی دروست بنووسە بۆ پەیوەندی لەسەر ئۆردەرەکەت." }, { status: 400 });
+    }
+
+    const destination = {
+      latitude: typeof v.delivery_latitude === "number" ? v.delivery_latitude : Number.NaN,
+      longitude: typeof v.delivery_longitude === "number" ? v.delivery_longitude : Number.NaN,
+    };
+    if (!isValidGeoPoint(destination)) {
+      return NextResponse.json({ error: "تکایە شوێنی گەیاندن دیاری بکە." }, { status: 400 });
+    }
     // Resolve the single-store cart and read the delivery fee from the database.
     // If migration 0009 is missing, fail closed rather than placing a zero-fee order.
     const productIds = items.map((item) => item.product_id);
@@ -84,10 +99,24 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "داواکاری دەبێت بەرهەمی یەک دوکان لەخۆ بگرێت." }, { status: 409 });
     }
     const { data: store, error: storeError } = await c.db.from("stores")
-      .select("delivery_fee_iqd,owner_id").eq("id", storeId).eq("status", "approved").maybeSingle();
+      .select("delivery_fee_iqd,owner_id,service_center_lat,service_center_lng,service_radius_km")
+      .eq("id", storeId).eq("status", "approved").maybeSingle();
     if (storeError) throw storeError;
     if (!store) {
       return NextResponse.json({ error: "دوکان بەردەست نییە یان پەسەند نەکراوە." }, { status: 409 });
+    }
+    if (store.service_center_lat === null || store.service_center_lat === undefined
+      || store.service_center_lng === null || store.service_center_lng === undefined
+      || store.service_radius_km === null || store.service_radius_km === undefined) {
+      return NextResponse.json({ error: "ئەم دوکانە هێشتا ناوچەی گەیاندنی خۆی دیاری نەکردووە." }, { status: 503 });
+    }
+    const serviceCenter = {
+      latitude: Number(store.service_center_lat),
+      longitude: Number(store.service_center_lng),
+    };
+    const serviceRadiusKm = Number(store.service_radius_km);
+    if (!isWithinServiceRadius(destination, serviceCenter, serviceRadiusKm)) {
+      return NextResponse.json({ error: "ببورە، بۆ ئەم ناوچەیە خزمەتگوزاریی گەیاندن بەردەست نییە." }, { status: 422 });
     }
     const deliveryFee = Number(store.delivery_fee_iqd);
     if (!Number.isSafeInteger(deliveryFee) || deliveryFee < 0 || deliveryFee > 100000000) {
@@ -99,11 +128,22 @@ export async function POST(request: Request) {
       p_items: items,
       p_delivery_address: address,
       p_customer_name: typeof v.customer_name === "string" ? v.customer_name.slice(0, 120) : null,
-      p_customer_phone: typeof v.customer_phone === "string" ? v.customer_phone.slice(0, 40) : null,
+      p_customer_phone: phone,
       p_customer_note: typeof v.customer_note === "string" ? v.customer_note.slice(0, 1000) : null,
       p_delivery_fee_iqd: deliveryFee,
+      p_delivery_latitude: destination.latitude,
+      p_delivery_longitude: destination.longitude,
     });
     if (error) {
+      if (error.message.includes("Delivery location is outside service zone")) {
+        return NextResponse.json({ error: "ببورە، بۆ ئەم ناوچەیە خزمەتگوزاریی گەیاندن بەردەست نییە." }, { status: 422 });
+      }
+      if (error.message.includes("Store delivery zone is not configured")) {
+        return NextResponse.json({ error: "ئەم دوکانە هێشتا ناوچەی گەیاندنی خۆی دیاری نەکردووە." }, { status: 503 });
+      }
+      if (error.message.includes("Customer phone")) {
+        return NextResponse.json({ error: "تکایە ژمارەی مۆبایلێکی دروست بنووسە." }, { status: 400 });
+      }
       const message = error.message.includes("Insufficient stock") ? "کۆگای بەرهەم بەشی ئەم داواکارییە ناکات." :
         error.message.includes("unavailable") ? "بەرهەم یان دوکان بەردەست نییە." : "تۆمارکردنی داواکاری سەرکەوتوو نەبوو.";
       return NextResponse.json({ error: message }, { status: 409 });
