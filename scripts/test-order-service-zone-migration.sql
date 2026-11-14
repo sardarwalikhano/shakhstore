@@ -235,6 +235,73 @@ end
 $$;
 reset role;
 
+-- Malformed mobile numbers and invalid GPS coordinates are rejected.
+set role service_role;
+do $
+begin
+  begin
+    perform public.place_store_order(
+      '11111111-1111-4111-8111-111111111111',
+      '[{"product_id":"44444444-4444-4444-8444-444444444444","quantity":1}]'::jsonb,
+      'Erbil, Test Street, Building 1',
+      'Test Customer',
+      'abc12345',
+      null,
+      1000,
+      36.20,
+      44.02
+    );
+    raise exception 'Expected malformed-phone rejection';
+  exception
+    when others then
+      if sqlerrm not like '%Customer phone is required or invalid%' then
+        raise;
+      end if;
+  end;
+
+  begin
+    perform public.place_store_order(
+      '11111111-1111-4111-8111-111111111111',
+      '[{"product_id":"44444444-4444-4444-8444-444444444444","quantity":1}]'::jsonb,
+      'Erbil, Test Street, Building 1',
+      'Test Customer',
+      '07501234567',
+      null,
+      1000,
+      null,
+      44.02
+    );
+    raise exception 'Expected missing-GPS rejection';
+  exception
+    when others then
+      if sqlerrm not like '%Delivery location is required or invalid%' then
+        raise;
+      end if;
+  end;
+
+  begin
+    perform public.place_store_order(
+      '11111111-1111-4111-8111-111111111111',
+      '[{"product_id":"44444444-4444-4444-8444-444444444444","quantity":1}]'::jsonb,
+      'Erbil, Test Street, Building 1',
+      'Test Customer',
+      '07501234567',
+      null,
+      1000,
+      91,
+      44.02
+    );
+    raise exception 'Expected out-of-range-GPS rejection';
+  exception
+    when others then
+      if sqlerrm not like '%Delivery location is required or invalid%' then
+        raise;
+      end if;
+  end;
+end
+$;
+reset role;
+
 -- A store without all three service-zone values is not orderable.
 update public.stores
   set service_center_lat = null,
