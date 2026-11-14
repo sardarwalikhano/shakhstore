@@ -22,7 +22,10 @@ alter table public.stores
     )
     or
     (
-      service_center_lat between -90 and 90
+      service_center_lat is not null
+      and service_center_lng is not null
+      and service_radius_km is not null
+      and service_center_lat between -90 and 90
       and service_center_lng between -180 and 180
       and service_radius_km > 0
       and service_radius_km <= 100
