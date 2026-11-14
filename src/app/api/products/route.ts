@@ -42,8 +42,18 @@ export async function GET(){
     const zoneConfigured=Boolean(store?.service_center_lat!==null&&store?.service_center_lat!==undefined
       &&store?.service_center_lng!==null&&store?.service_center_lng!==undefined
       &&store?.service_radius_km!==null&&store?.service_radius_km!==undefined);
+    // Do not expose the private service-zone centre through the public catalog.
+    // Customers only need to know whether delivery is available and the radius.
+    const publicStore=store?{
+     id:store.id,
+     name:store.name,
+     slug:store.slug,
+     store_type:store.store_type,
+     status:store.status
+    }:null;
     return {
      ...p,
+     stores:Array.isArray(p.stores)?(publicStore?[publicStore]:[]):publicStore,
      delivery_fee_iqd:p.store_id?feeByStore.get(p.store_id)??null:null,
      delivery_zone_configured:zoneConfigured,
      delivery_zone_radius_km:zoneConfigured?Number(store?.service_radius_km):null
