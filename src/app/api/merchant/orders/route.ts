@@ -63,7 +63,7 @@ export async function PATCH(request:Request) {
     if(!order) return NextResponse.json({error:"Order not found"},{status:404});
     const permittedStoreIds = c.role==="admin"||c.role==="super_admin"
       ? [order.store_id]
-      : await ownedStoreIds(c.db,c.user.id);
+      : await ownedStoreIds(c.db,c.user.id,c.role);
     if(!permittedStoreIds.includes(order.store_id)) {
       return NextResponse.json({error:"You do not own this store"},{status:403});
     }
