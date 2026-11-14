@@ -59,6 +59,7 @@ const serviceZoneMigration = readFileSync(resolve(process.cwd(), "supabase/migra
 const orderApi = readFileSync(resolve(process.cwd(), "src/app/api/orders/route.ts"), "utf8");
 const adminStoresPage = readFileSync(resolve(process.cwd(), "src/app/dashboard/admin/stores/page.tsx"), "utf8");
 const adminStoresApi = readFileSync(resolve(process.cwd(), "src/app/api/admin/stores/route.ts"), "utf8");
+const merchantStorePage = readFileSync(resolve(process.cwd(), "src/app/dashboard/store/page.tsx"), "utf8");
 const serviceZoneIntegration = readFileSync(resolve(process.cwd(), "scripts/test-order-service-zone-migration.sql"), "utf8");
 
 
@@ -143,6 +144,11 @@ const checks = [
   ["captain earnings API verifies trusted captain role", captainEarningsApi.includes('user.app_metadata?.role !== "captain"')],
   ["merchant orders API checks trusted merchant or admin role", merchantOrdersApi.includes("MERCHANT_ROLES.includes(role)") && merchantOrdersApi.includes('role!=="admin"&&role!=="super_admin"')],
   ["store API binds submitted store type to the trusted merchant role", storesApi.includes('TYPES.includes(role as typeof TYPES[number])') && storesApi.includes("storeType!==role")],
+  ["store onboarding API returns the trusted role for its form", storesApi.includes("store:data,role:ctx.role")],
+  ["store onboarding UI shows one fixed store type from the trusted role", merchantStorePage.includes("setUserRole(role)") && merchantStorePage.includes("types.find(t=>t.value===userRole)") && merchantStorePage.includes("ناتوانیت بەشی دوکانێکی تر هەڵبژێریت")],
+  ["store onboarding UI does not expose a merchant type dropdown", !merchantStorePage.includes('<select className={input} value={form.storeType}')],
+  ["merchant product edits and deletes re-check category ownership", productByIdApi.includes("current.category!==merchantCategory") && productByIdApi.includes('.eq("category",merchantCategory)') && productByIdApi.includes('.eq("category",requiredCategory)')],
+
   ["API mutation middleware blocks cross-site write requests", middleware.includes('new Set(["GET", "HEAD", "OPTIONS"])') && middleware.includes('fetchSite === "cross-site"') && middleware.includes("Cross-origin API mutation is not allowed")],
   ["API mutation middleware validates Origin and Referer", middleware.includes('request.headers.get("origin")') && middleware.includes('request.headers.get("referer")')],
   ["customer order history is scoped to the authenticated user", ordersApi.includes('.eq("customer_id", c.user.id)')],
