@@ -68,6 +68,9 @@ const orderZoneApi = orderApi;
 const storeZoneAdminApi = adminStoresApi;
 const storeZoneAdminPage = adminStoresPage;
 const orderZoneIntegration = serviceZoneIntegration;
+const MERCHANT_ROLES = ["restaurant","supermarket","produce_vendor","meat_seafood_vendor"];
+const TYPES = ["restaurant","supermarket","produce_vendor","meat_seafood_vendor"];
+
 
 
 
