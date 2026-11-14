@@ -21,8 +21,12 @@ async function context() {
   return {user,role,db:createClient(url,service,{auth:{autoRefreshToken:false,persistSession:false}})};
 }
 
-async function ownedStoreIds(db:SupabaseClient,userId:string) {
-  const {data,error}=await db.from("stores").select("id").eq("owner_id",userId);
+async function ownedStoreIds(db:SupabaseClient,userId:string,merchantRole:string) {
+  let query=db.from("stores").select("id").eq("owner_id",userId);
+  // A merchant can access orders only for stores whose type matches the
+  // trusted app_metadata role, even if another store is attached to the user.
+  if(MERCHANT_ROLES.includes(merchantRole)) query=query.eq("store_type",merchantRole);
+  const {data,error}=await query;
   if(error) throw error;
   return (data??[]).map((s:{id:string})=>s.id);
 }
@@ -32,7 +36,7 @@ export async function GET() {
     const c=await context(); if("response" in c) return c.response;
     let query=c.db.from("orders").select("id,order_number,store_id,customer_id,status,subtotal_iqd,delivery_fee_iqd,total_iqd,customer_name,customer_phone,delivery_address,customer_note,merchant_note,created_at,order_items(id,product_name,unit_price_iqd,quantity,line_total_iqd)").order("created_at",{ascending:false}).limit(200);
     if(c.role!=="admin"&&c.role!=="super_admin") {
-      const storeIds=await ownedStoreIds(c.db,c.user.id);
+      const storeIds=await ownedStoreIds(c.db,c.user.id,c.role);
       if(storeIds.length===0) return NextResponse.json({orders:[]});
       query=query.in("store_id",storeIds);
     }
