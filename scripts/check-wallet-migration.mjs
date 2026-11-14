@@ -61,6 +61,14 @@ const adminStoresPage = readFileSync(resolve(process.cwd(), "src/app/dashboard/a
 const adminStoresApi = readFileSync(resolve(process.cwd(), "src/app/api/admin/stores/route.ts"), "utf8");
 const merchantStorePage = readFileSync(resolve(process.cwd(), "src/app/dashboard/store/page.tsx"), "utf8");
 const serviceZoneIntegration = readFileSync(resolve(process.cwd(), "scripts/test-order-service-zone-migration.sql"), "utf8");
+const productApi = productsApi;
+const productItemApi = productByIdApi;
+const serviceZoneHelper = serviceZone;
+const orderZoneApi = orderApi;
+const storeZoneAdminApi = adminStoresApi;
+const storeZoneAdminPage = adminStoresPage;
+const orderZoneIntegration = serviceZoneIntegration;
+
 
 
 
