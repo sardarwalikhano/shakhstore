@@ -139,7 +139,7 @@ set role service_role;
 -- and decrements stock exactly once.
 select public.place_store_order(
   '11111111-1111-4111-8111-111111111111',
-  '[{"product_id":"44444444-4444-4444-8444-444444444444","quantity":2}'::jsonb,
+  '[{"product_id":"44444444-4444-4444-8444-444444444444","quantity":2}]'::jsonb,
   'Erbil, Test Street, Building 1',
   'Test Customer',
   '07501234567',
@@ -160,7 +160,7 @@ declare
   v_total bigint;
 begin
   select customer_phone,total_iqd into v_phone,v_total
-    from public.orders where id = :'inside_zone_order_id'::uuid;
+    from public.orders order by created_at desc limit 1;
   if v_phone <> '07501234567' then
     raise exception 'Customer phone was not persisted on the order';
   end if;
@@ -168,7 +168,7 @@ begin
     raise exception 'Unexpected order total: %', v_total;
   end if;
   select count(*) into v_count from public.order_items
-    where order_id = :'inside_zone_order_id'::uuid;
+    where order_id = (select id from public.orders order by created_at desc limit 1);
   if v_count <> 1 then
     raise exception 'Expected one order item, got %', v_count;
   end if;
