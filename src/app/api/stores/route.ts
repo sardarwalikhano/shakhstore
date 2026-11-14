@@ -15,7 +15,7 @@ async function context() {
   const {data:{user},error}=await auth.auth.getUser();
   if(error||!user)return {error:NextResponse.json({error:"Authentication required"},{status:401})};
   const db=createClient(url,service,{auth:{autoRefreshToken:false,persistSession:false}});
-  return {user,db};
+  return {user,role:String(user.app_metadata?.role??"customer"),db};
 }
 
 export async function GET(){
@@ -23,7 +23,7 @@ export async function GET(){
     const ctx=await context();if("error" in ctx)return ctx.error;
     const {data,error}=await ctx.db.from("stores").select("id,owner_id,name,slug,store_type,description,phone,address,status,admin_note,created_at,updated_at").eq("owner_id",ctx.user.id).order("created_at",{ascending:false}).limit(1).maybeSingle();
     if(error)throw error;
-    return NextResponse.json({store:data});
+    return NextResponse.json({store:data,role:ctx.role});
   }catch(e){console.error("Store profile load failed",e);return NextResponse.json({error:"Unable to load store profile"},{status:500});}
 }
 

@@ -1,10 +1,10 @@
-# SHAKH STORE Cashout Management Setup
+# SHAKH STORE Wallet Top-up and Cashout Setup
 
-This feature is deployed in the Next.js application, but it will not operate until the production environment and Supabase migration are configured.
+This feature requires the matching application deployment and database migrations. Do not enable it in production until the live schema has been reconciled with the repository migration history and the accounting checks below have passed.
 
 ## 1. Vercel environment variables
 
-Set these for the **Production** environment in the Vercel project:
+Set these for the intended Vercel environment:
 
 - `NEXT_PUBLIC_SUPABASE_URL`: the project URL from Supabase Project Settings → API.
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`: the publishable/anon key from Supabase Project Settings → API.
@@ -15,55 +15,134 @@ Important:
 - Do not commit real keys to Git.
 - Redeploy after adding or changing environment variables.
 
-## 2. Apply database migrations
+## 2. Database migration and production safety
 
-Apply the migrations in order to the intended Supabase project:
+The feature branch contains these additive migrations:
 
-1. `supabase/migrations/0001_project_foundation.sql`
-2. `supabase/migrations/0002_wallet_ledger_and_cash_reward.sql`
-3. `supabase/migrations/0003_reward_wallet_cashout_admin_review.sql`
+1. `0012_wallet_topups_fastpay_fib.sql` — private receipt-backed top-up requests and Super Admin review.
+2. `0013_captain_commission_80_20.sql` — captain delivery-fee share default: 80% captain / 20% platform.
+3. `0014_cashout_payout_destination_and_completion.sql` — FastPay/FIB destination and explicit paid status.
+4. `0015_cashout_external_asset_accounting.sql` — intermediate accounting correction; superseded for the manual-payout workflow by M16.
+5. `0016_manual_cashout_settlement.sql` — separates approval from physical payout and posts the internal 75/25 settlement only after Super Admin confirms the manual transfer.
+6. `20261112183000_wallet_topup_duplicate_protection.sql` — stores receipt SHA-256 and normalized provider payment references with database-enforced unique indexes; protects legacy top-up review. Its PostgreSQL 17 integration suite runs in CI against an isolated temporary database.
+7. `20261114071730_store_service_zones_and_checkout_phone.sql` (M18) — adds per-store delivery-zone centre/radius, requires a valid customer mobile number and GPS destination at checkout, and rejects orders outside the store's configured service radius. Its PostgreSQL 17 integration fixture runs in CI against an isolated database.
 
-Do not apply migration 0003 alone if migrations 0001 and 0002 have not already been applied. Review the target project and take a database backup before applying migrations to production.
+These migrations depend on the existing wallet, cashout, storage, and commission schema. Do not apply them in isolation or assume the production migration history is complete. The production project has previously shown existing application tables while its migration history endpoint returned no applied migrations. Reconcile the live schema, functions, constraints, storage policies, and migration history before applying anything.
 
-## 3. Grant the Super Admin role
+Before a production change:
+- Take and verify a restorable database backup.
+- Compare the exact live schema with all prerequisite migrations.
+- Treat every IQD wallet/account balance as an internal bookkeeping unit only; it is not evidence of money held in FastPay/FIB or a bank account.
+- Review historical top-up and cashout ledger entries against actual FastPay/FIB receipts and statements. M16 does not rewrite historical transactions. Legacy approved cashouts with an existing ledger transaction are marked paid without posting a second settlement.
+- Test on a separate staging project with realistic top-up, cashout, rejection, and retry scenarios.
+- Prepare a tested rollback/recovery plan.
 
-The API checks the trusted `auth.users.raw_app_meta_data` claim `role = super_admin`. It deliberately does not trust `user_metadata`, because users can generally edit their own user metadata.
+Do not edit historical migrations. All corrections in this feature are additive.
 
-In Supabase SQL Editor, first identify the exact Auth user UUID for the intended administrator. Then run this statement with that verified UUID:
+### Migration runner compatibility gate
 
-```sql
-update auth.users
-set raw_app_meta_data =
-  coalesce(raw_app_meta_data, '{}'::jsonb)
-  || jsonb_build_object('role', 'super_admin')
-where id = 'REPLACE_WITH_VERIFIED_AUTH_USER_UUID';
-```
+The repository currently uses four-digit migration prefixes (`0001`–`0016`) rather than the timestamped `<timestamp>_<name>.sql` format documented for the Supabase CLI. It also contains two files with the same `0004` prefix (`0004_in_app_notifications.sql` and `0004_store_profiles_and_onboarding.sql`). The repository does not currently include `supabase/config.toml`, and the GitHub CI workflow runs application lint/typecheck/build but does not run Supabase migration commands.
 
-Verify the result by querying only the selected user's id and raw_app_meta_data. Do not grant this role to ordinary users. The administrator should sign out and sign in again after the claim is changed so the refreshed session contains the updated app metadata.
+This means a green application CI and a READY Vercel Preview do **not** prove the SQL migration chain can be applied through the Supabase CLI. Before any migration rollout:
 
-## 4. Cashout API
+- Establish a migration baseline from the exact live production schema; do not infer it from the empty migration-history list.
+- Define a one-time migration-history conversion plan with unique, ordered timestamp identifiers while preserving every SQL change and dependency. Do not rename or reorder files ad hoc.
+- Run the complete migration chain on a separate staging project and verify `supabase migration list` plus schema/function/constraint diffs before considering production.
+- Use an explicitly selected staging target for CLI commands. Current Supabase CLI v3 defaults database commands to the local stack; hosted changes require explicit remote targeting and confirmation.
 
-- `GET /api/admin/cashouts`: returns the latest 100 requests, newest first.
-- `POST /api/admin/cashouts`: accepts `requestId`, `decision` (`approve` or `reject`), and an optional note.
-- Dashboard: `/dashboard/admin/cashouts`.
+References: [Supabase migration file format and history](https://supabase.com/docs/reference/cli/supabase-migration-list), [Supabase CLI v3 migration guide](https://supabase.com/docs/guides/local-development/cli/migrating-to-v3).
 
-Every request is authenticated on the server and checked against `app_metadata.role`. The service-role client is created only inside the route handler and must never be sent to the browser.
+## 3. Super Admin authorization
 
-## 5. Financial behavior
+The APIs check the trusted `auth.users.raw_app_meta_data` claim `role = super_admin`. They deliberately do not trust `user_metadata`, because users can generally edit their own user metadata.
 
-A pending request reserves its full requested amount against the user's available wallet balance. Rejection releases that reservation. Approval debits the full requested amount and records the 75% payout and 25% SHAKH fee in the ledger atomically. Actual transfer of the 75% cash amount to the user's bank, cash agent, or other payment channel remains an operational payout step and must be reconciled separately.
+Grant the role only after identifying and verifying the intended Auth user UUID. Do not grant this role to ordinary users. The administrator should sign out and sign in again after the claim changes so the refreshed session contains the updated app metadata.
 
-## 6. Production verification checklist
+## 4. Wallet top-ups
 
-Before enabling customer cashouts, verify:
+- FastPay receiving number: `07736999576`
+- FIB receiving number: `07504796924`
+- 1 IQD approved payment = 1 IQD wallet credit.
+- A user submits an amount and a private receipt.
+- No wallet credit occurs until Super Admin verifies the actual received payment and approves the request.
+- M17 adds database-enforced uniqueness for receipt SHA-256 across all top-up requests and normalized payment references per provider. The API computes the receipt digest and requires the external transaction reference. Concurrent duplicate submissions are rejected by unique indexes, not an application-only pre-check. Legacy pending top-ups created before M17 lack integrity metadata and cannot be approved; reject them and ask the user to submit a fresh request with a reference and receipt. Staging tests of duplicate and concurrent submissions are still required before Production.
+- Receipts must remain in the private `wallet-topup-receipts` Storage bucket; do not make this bucket public.
 
-- [ ] Production Supabase URL and anon key are configured.
-- [ ] Server-only service-role key is configured and non-empty.
-- [ ] All migrations are applied to the correct Supabase project.
-- [ ] The intended administrator has the trusted `app_metadata.role = super_admin` claim.
-- [ ] An ordinary authenticated user receives HTTP 403 from the admin API.
-- [ ] A signed-out request receives HTTP 401.
-- [ ] A pending cashout can be approved exactly once.
-- [ ] A rejected cashout releases the reservation without debiting the wallet.
-- [ ] Ledger entries balance for approval (debit = 75% credit + 25% credit).
-- [ ] The real-world 75% payout is completed and reconciled outside the ledger approval step.
+## 5. Cashout workflow
+
+- A pending request reserves the full requested amount against the user's available wallet balance.
+- The split is 75% to the requester and 25% to SHAKH.
+- The requester supplies their own FastPay/FIB payout destination.
+- Super Admin reviews and approves or rejects the request.
+- Approval changes the request to `approved` only. It does not debit the user's wallet, create a ledger transaction, or send money.
+- Pending requests and approved requests that do not yet have a ledger settlement reserve the full requested amount from the user's available wallet balance. Legacy approved requests that already have a ledger transaction are not reserved again. M16 makes both generic server-side wallet transfers and referral-reward settlements subtract these reservations before allowing another debit. Those debit RPCs use deterministic account lock order and re-check the idempotency key after acquiring locks so concurrent retries return the first committed transaction.
+- Super Admin manually sends the 75% payout to the user's supplied FastPay/FIB number outside SHAKH.
+- Only after confirming the external transfer does Super Admin select `mark paid`. M16 then atomically debits the user's wallet, credits the 25% platform share, and records the 75% payout in an internal payout-clearing account.
+- The payout-clearing account is strictly an internal accounting counterpart. Its balance is not a bank balance, cash-on-hand figure, or proof that a transfer occurred.
+- A rejected request releases the reservation and does not debit the wallet.
+- No bank API, automatic transfer, or external payment execution is performed by SHAKH.
+
+## 6. Captain delivery commission
+
+The approved delivery-fee split is 80% captain / 20% platform. The 80% default applies to new accruals; historical commission rows retain their stored rate.
+
+## 7. Latest Production Advisor findings (read-only, 2026-11-12)
+
+The current Production Supabase project still reports these items. No remediation SQL or Auth configuration was changed during this review.
+
+### Security
+- **WARN — exposed legacy cashout RPC:** `public.request_wallet_cashout(bigint,text)` is a `SECURITY DEFINER` function still executable by `authenticated`. M14 revokes this grant and exposes the destination-validating wrapper instead, but M14 has not been applied to Production. Treat this as a release blocker until the live grants are verified after a controlled migration. [Supabase remediation guidance](https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable)
+- **WARN — leaked password protection disabled:** enable compromised-password checks in Supabase Auth password security settings, then verify the setting. [Supabase Auth guidance](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection)
+- **INFO — captain commission settings has RLS but no policies:** direct client access is denied, which is intentional while settings are served only by trusted server code. Do not add a broad authenticated SELECT policy just to silence the advisor. [Supabase RLS guidance](https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy)
+
+### Performance
+- **INFO — seven unindexed foreign keys:** `captain_commission_settings.updated_by`, `captain_commissions.settled_by`, `captain_commissions.wallet_transaction_id`, `order_items.product_id`, `stores.reviewed_by`, `wallet_cashout_requests.reviewed_by`, and `wallet_cashout_requests.wallet_transaction_id`. Review workload and add covering indexes in a separate staged migration. [Supabase guidance](https://supabase.com/docs/guides/database/database-linter?lint=0001_unindexed_foreign_keys)
+- **WARN — multiple permissive SELECT policies:** `order_items`, `orders`, `products`, and `stores` each have overlapping authenticated SELECT policies. Review policy predicates for equivalence before consolidating them; do not weaken ownership or public-approved listing rules. [Supabase guidance](https://supabase.com/docs/guides/database/database-linter?lint=0006_multiple_permissive_policies)
+- **INFO — nine unused indexes:** do not drop them solely because current usage counters are zero; reassess after representative production traffic and query-plan review. [Supabase guidance](https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index)
+
+The Health Advisor returned no findings at the time of this review. The migration history endpoint still returns an empty list despite existing application tables, so schema/history reconciliation remains mandatory.
+
+## 8. Production verification checklist
+
+Before enabling these features, verify:
+
+- [ ] Correct production project and schema are identified.
+- [ ] Database backup has been restored successfully in a recovery test.
+- [ ] Migration history is reconciled with the actual live schema.
+- [ ] All new migrations have passed staging tests in order.
+- [ ] All internal IQD balances are clearly labelled as bookkeeping balances, never as bank balances.
+- [ ] Manual payout is physically confirmed outside SHAKH before the admin marks a cashout paid.
+- [ ] M16 prevents approval from debiting the wallet and settles exactly once at mark-paid.
+- [ ] `npm run check:wallet-migration` passes as part of CI before build.
+- [ ] Approved-but-unpaid requests remain reserved and cannot be requested a second time.
+- [ ] Generic wallet transfers and referral-reward settlements cannot spend funds reserved by a pending or unsettled approved cashout.
+- [ ] Private receipt bucket and access policies are verified.
+- [ ] Intended administrator has trusted `app_metadata.role = super_admin`.
+- [ ] Ordinary authenticated user receives HTTP 403 from admin APIs.
+- [ ] Signed-out request receives HTTP 401.
+- [ ] Top-up receipt review credits exactly once; reject credits nothing.
+- [ ] Duplicate top-up receipt hashes and external payment references are rejected at database level, including concurrent submissions.
+- [ ] The PostgreSQL 17 integration job applies M17 to a fresh fixture and verifies duplicate rejection, legacy approval guard, successful one-time credit, and RPC grants.
+- [ ] Legacy pending top-up requests without M17 integrity metadata are rejected and resubmitted, not approved.
+- [ ] Cashout rejection releases the reservation without debiting the wallet.
+- [ ] Cashout approval leaves user/platform/payout-clearing balances and ledger entries unchanged.
+- [ ] Mark-paid is available only after approval and a verified external manual payout; it posts the 75/25 settlement exactly once.
+- [ ] Legacy approved requests with an existing ledger transaction are marked paid without duplicate ledger posting.
+- [ ] Physical FastPay/FIB transfer is confirmed before marking paid.
+- [ ] Captain commission accrual uses 80/20 for new eligible deliveries.
+
+
+## 8. Catalogue categories and delivery eligibility
+
+Merchant product categories are determined by the trusted `app_metadata.role` and enforced by both the product API and product-management screen:
+
+- `restaurant` → `food`
+- `supermarket` → `grocery`
+- `produce_vendor` → `produce`
+- `meat_seafood_vendor` → `meat_seafood`
+
+Merchants only see and manage products in their own store and mapped category. The API rejects a cross-category create, edit or delete attempt; Admin and Super Admin retain the cross-category management view.
+
+At checkout, customers must provide a telephone number and select their actual delivery location using GPS. The API validates both again and the database RPC repeats the service-zone and phone checks before it writes the order or decrements stock. If the destination is outside the store's configured radius, checkout is refused with the Kurdish unavailable-area message. An approved store must have a GPS centre and a radius from 0.1 to 100 km configured by an authorized admin before it can accept orders.
+
+The service-zone radius is a circular distance calculation from the configured centre, not a road-network travel-time estimate. Stores are responsible for supplying an accurate centre and radius. Do not assume a radius is configured merely because the store is approved.

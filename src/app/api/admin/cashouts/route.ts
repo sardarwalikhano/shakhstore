@@ -56,7 +56,7 @@ export async function GET() {
 
     const { data, error } = await auth.adminClient
       .from("wallet_cashout_requests")
-      .select("id,user_id,requested_amount_iqd,cash_amount_iqd,platform_fee_iqd,status,user_note,admin_note,created_at,reviewed_at")
+      .select("id,user_id,requested_amount_iqd,cash_amount_iqd,platform_fee_iqd,status,user_note,admin_note,payout_method,payout_phone,paid_at,created_at,reviewed_at")
       .order("created_at", { ascending: false })
       .limit(100);
 
@@ -87,14 +87,42 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
     }
 
-    const { requestId, decision, note } = body as {
+    const { requestId, decision, note, action } = body as {
       requestId?: unknown;
       decision?: unknown;
+      action?: unknown;
       note?: unknown;
     };
 
     if (typeof requestId !== "string" || !/^[0-9a-f-]{36}$/i.test(requestId)) {
       return NextResponse.json({ error: "Invalid cashout request ID" }, { status: 400 });
+    }
+    if (action === "mark_paid") {
+      const { data: cashout, error: readError } = await auth.adminClient
+        .from("wallet_cashout_requests").select("id,user_id,cash_amount_iqd,status,payout_method,payout_phone")
+        .eq("id", requestId).maybeSingle();
+      if (readError) throw readError;
+      if (!cashout) return NextResponse.json({ error: "Cashout request not found" }, { status: 404 });
+      if (cashout.status !== "approved") return NextResponse.json({ error: "Only approved requests can be marked paid" }, { status: 409 });
+      if ((cashout.payout_method !== "fastpay" && cashout.payout_method !== "fib") || !cashout.payout_phone) {
+        return NextResponse.json({ error: "This legacy cashout has no verified payout destination. Contact the requester before recording payment." }, { status: 409 });
+      }
+      const { error } = await auth.adminClient.rpc("mark_wallet_cashout_paid", {
+        p_request_id: requestId, p_admin_user_id: auth.user.id,
+      });
+      if (error) throw error;
+      try {
+        await createInAppNotifications([{
+          userId: cashout.user_id, type: "cashout",
+          title: "پارەی کاش ئاوت نێردرا",
+          body: "بڕی " + new Intl.NumberFormat("en-US").format(Number(cashout.cash_amount_iqd)) + " د.ع بۆ ژمارەی تۆ نێردرا.",
+          data: { cashout_request_id: cashout.id, status: "paid" },
+        }]);
+      } catch (notificationError) {
+        // Paid status is already committed; notification delivery is best-effort.
+        console.error("Cashout marked paid but notification delivery failed:", notificationError);
+      }
+      return NextResponse.json({ success: true, status: "paid" });
     }
     if (decision !== "approve" && decision !== "reject") {
       return NextResponse.json({ error: "Decision must be approve or reject" }, { status: 400 });
@@ -103,8 +131,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid admin note" }, { status: 400 });
     }
 
-    // Read the recipient before the atomic RPC. The RPC itself locks the row,
-    // checks that it is still pending, and performs the financial settlement.
+    // Read the recipient before the atomic RPC. The RPC locks the row and
+    // changes workflow status only; ledger settlement happens after manual payout.
     const { data: cashout, error: cashoutError } = await auth.adminClient
       .from("wallet_cashout_requests")
       .select("id,user_id,requested_amount_iqd,cash_amount_iqd,status")
@@ -134,15 +162,20 @@ export async function POST(request: Request) {
     const amount = new Intl.NumberFormat("en-US").format(Number(cashout.requested_amount_iqd));
     const approved = decision === "approve";
     const cashAmount = new Intl.NumberFormat("en-US").format(Number(cashout.cash_amount_iqd));
-    await createInAppNotifications([{
-      userId: cashout.user_id,
-      type: "cashout",
-      title: approved ? "داواکاری کشانەوە پەسەند کرا" : "داواکاری کشانەوە ڕەتکرایەوە",
-      body: approved
-        ? "داواکاری " + amount + " د.ع پەسەند کرا. بڕی پارەدانی دەرەکی " + cashAmount + " د.عە و پێویستی بە جێبەجێکردنی payout هەیە."
-        : "داواکاری " + amount + " د.ع ڕەتکرایەوە. بڕەکە لە wallet ـەکەتدا بەردەستە.",
-      data: { cashout_request_id: cashout.id, decision },
-    }]);
+    try {
+      await createInAppNotifications([{
+        userId: cashout.user_id,
+        type: "cashout",
+        title: approved ? "داواکاری کشانەوە پەسەند کرا" : "داواکاری کشانەوە ڕەتکرایەوە",
+        body: approved
+          ? "داواکاری " + amount + " د.ع پەسەند کرا. بڕی پارەدانی دەرەکی " + cashAmount + " د.عە و پێویستی بە جێبەجێکردنی payout هەیە."
+          : "داواکاری " + amount + " د.ع ڕەتکرایەوە. بڕەکە لە wallet ـەکەتدا بەردەستە.",
+        data: { cashout_request_id: cashout.id, decision },
+      }]);
+    } catch (notificationError) {
+      // Approval is workflow-only; no wallet settlement occurs until mark-paid.
+      console.error("Cashout review saved but notification delivery failed:", notificationError);
+    }
 
     return NextResponse.json({ success: true, transactionId: data });
   } catch (error) {

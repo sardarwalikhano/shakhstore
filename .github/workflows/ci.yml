@@ -64,5 +64,50 @@ jobs:
       - name: TypeScript
         run: npm run typecheck
 
+      - name: Supabase migration inventory (read-only)
+        run: npm run audit:supabase-migrations
+
+      - name: Wallet migration invariants
+        run: npm run check:wallet-migration
+
       - name: Production build
         run: npm run build
+
+  wallet-migration-integration:
+    name: PostgreSQL 17 wallet and delivery integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: shakh_wallet_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d shakh_wallet_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Apply M17 and run PostgreSQL integration tests
+        env:
+          TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/shakh_wallet_test
+        run: psql "$TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/test-wallet-topup-migration.sql
+
+      - name: Apply M18 and run delivery-zone checkout integration tests
+        env:
+          PGPASSWORD: postgres
+          TEST_ORDER_DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
+        run: |
+          createdb -h localhost -U postgres shakh_order_test
+          export TEST_ORDER_DATABASE_URL=postgres://postgres:postgres@localhost:5432/shakh_order_test
+          psql "$TEST_ORDER_DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/test-order-service-zone-migration.sql
