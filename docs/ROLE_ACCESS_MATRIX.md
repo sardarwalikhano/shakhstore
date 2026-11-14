@@ -19,6 +19,18 @@ This matrix records the intended trusted-role policy implemented in the Feature 
 
 Merchant roles: `restaurant`, `supermarket`, `produce_vendor`, `meat_seafood_vendor`.
 
+## Merchant product-category isolation
+
+| Trusted merchant role | Visible and writable product category |
+|---|---|
+| `restaurant` | `food` |
+| `supermarket` | `grocery` |
+| `produce_vendor` | `produce` |
+| `meat_seafood_vendor` | `meat_seafood` |
+
+Merchant product listing queries are filtered to the role's category and the authenticated user's approved store. Product creation rejects any different category. Product edits and deletes also verify the existing category and repeat category/owner/store predicates on the write. Other merchant categories are not offered in the merchant form; Admin and Super Admin retain cross-category controls.
+
+
 A role-specific layout is a user-interface and route-access layer. It does not replace authorization inside API handlers; every privileged API must independently verify the current Supabase user and trusted role.
 
 ## API authorization matrix
