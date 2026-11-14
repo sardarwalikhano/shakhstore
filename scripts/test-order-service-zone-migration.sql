@@ -3,9 +3,27 @@
 -- Isolated PostgreSQL 17 fixture for M18.
 -- Never connects to Supabase Production and contains no real customer data.
 
-create role anon nologin;
-create role authenticated nologin;
-create role service_role nologin bypassrls;
+do $
+begin
+  create role anon nologin;
+exception when duplicate_object then
+  null;
+end
+$;
+do $
+begin
+  create role authenticated nologin;
+exception when duplicate_object then
+  null;
+end
+$;
+do $
+begin
+  create role service_role nologin bypassrls;
+exception when duplicate_object then
+  null;
+end
+$;
 
 create schema auth;
 create table auth.users (id uuid primary key);
