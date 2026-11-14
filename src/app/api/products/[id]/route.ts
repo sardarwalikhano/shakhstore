@@ -24,6 +24,8 @@ export async function PATCH(request:Request,{params}:Params){
   const {id}=await params;if(!/^[0-9a-f-]{36}$/i.test(id))return NextResponse.json({error:"Invalid product ID"},{status:400});
   const {data:current,error:findError}=await c.db.from("products").select("id,owner_id,store_id,category").eq("id",id).maybeSingle();
   if(findError)throw findError;if(!current)return NextResponse.json({error:"Product not found"},{status:404});
+  const platformScope=new URL(request.url).searchParams.get("scope")==="platform";
+  if(platformScope&&(c.role!=="super_admin"||current.owner_id!==c.user.id||current.store_id!==null))return NextResponse.json({error:"Platform market product access denied"},{status:403});
   let merchantStoreId: string | null = null;
   const merchantCategory = productCategoryForRole(c.role);
   if(c.role!=="super_admin"&&c.role!=="admin"){
@@ -53,6 +55,7 @@ export async function PATCH(request:Request,{params}:Params){
   let updateQuery = c.db.from("products").update(patch).eq("id",id);
   // Re-apply merchant ownership in the UPDATE predicate. The earlier read is
   // only for authorization feedback; it is not the final write authorization.
+  if(platformScope)updateQuery=updateQuery.eq("owner_id",c.user.id).is("store_id",null);
   if (merchantStoreId && merchantCategory) {
    updateQuery = updateQuery.eq("owner_id",c.user.id).eq("store_id",merchantStoreId).eq("category",merchantCategory);
   }
@@ -62,11 +65,14 @@ export async function PATCH(request:Request,{params}:Params){
   return NextResponse.json({product:data});
  }catch(e){console.error("Product PATCH failed",e);return NextResponse.json({error:"Unable to update product"},{status:409});}
 }
-export async function DELETE(_request:Request,{params}:Params){
+export async function DELETE(request:Request,{params}:Params){
  try{
   const c=await context();if("response" in c)return c.response;
   const {id}=await params;if(!/^[0-9a-f-]{36}$/i.test(id))return NextResponse.json({error:"Invalid product ID"},{status:400});
+  const platformScope=new URL(request.url).searchParams.get("scope")==="platform";
+  if(platformScope&&c.role!=="super_admin")return NextResponse.json({error:"Super Admin access required"},{status:403});
   let q=c.db.from("products").delete().eq("id",id);
+  if(platformScope)q=q.eq("owner_id",c.user.id).is("store_id",null);
   if(c.role!=="super_admin"&&c.role!=="admin"){
    const {data:store,error:storeError}=await c.db.from("stores").select("id").eq("owner_id",c.user.id).eq("status","approved").maybeSingle();
    if(storeError)throw storeError;
