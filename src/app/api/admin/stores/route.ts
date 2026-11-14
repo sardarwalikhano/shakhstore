@@ -45,12 +45,12 @@ export async function GET(){
       if(primary.error.code!=="42703")throw primary.error;
       const feeFallback=await ctx.db.from("stores").select(selectBase+",delivery_fee_iqd").order("created_at",{ascending:false}).limit(200);
       if(!feeFallback.error){
-        rows=(feeFallback.data??[]).map(s=>({...s,service_center_lat:null,service_center_lng:null,service_radius_km:null})) as unknown as AdminStoreRow[];
+        rows=((feeFallback.data??[]) as unknown as AdminStoreRow[]).map(s=>({...s,service_center_lat:null,service_center_lng:null,service_radius_km:null}));
       }else{
         if(feeFallback.error.code!=="42703")throw feeFallback.error;
         const legacyFallback=await ctx.db.from("stores").select(selectBase).order("created_at",{ascending:false}).limit(200);
         if(legacyFallback.error)throw legacyFallback.error;
-        rows=(legacyFallback.data??[]).map(s=>({...s,delivery_fee_iqd:null,service_center_lat:null,service_center_lng:null,service_radius_km:null})) as unknown as AdminStoreRow[];
+        rows=((legacyFallback.data??[]) as unknown as AdminStoreRow[]).map(s=>({...s,delivery_fee_iqd:null,service_center_lat:null,service_center_lng:null,service_radius_km:null}));
       }
     }
     const stores=await Promise.all(rows.map(async (s:AdminStoreRow)=>{const {data}=await ctx.db.auth.admin.getUserById(s.owner_id);return {...s,owner_email:data.user?.email??null};}));
