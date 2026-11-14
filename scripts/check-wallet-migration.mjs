@@ -172,6 +172,7 @@ const checks = [
   ["top-up history and new requests use the authenticated user ID", topupApi.includes('.eq("user_id", c.user.id)') && topupApi.includes("user_id: c.user.id")],
   ["captain delivery reads and updates are scoped to the assigned captain", captainDeliveriesApiSource.includes('.eq("captain_id",c.user.id)')],
   ["merchant order queries and updates enforce store ownership", merchantOrdersApi.includes('query=query.in("store_id",storeIds)') && merchantOrdersApi.includes('.in("store_id",permittedStoreIds)')],
+  ["merchant order access is limited to stores matching trusted merchant role", merchantOrdersApi.includes('query=query.eq("store_type",merchantRole)') && merchantOrdersApi.includes('ownedStoreIds(c.db,c.user.id,c.role)') && merchantOrdersApi.includes('query=query.eq("store_type",merchantRole)')],
   ["restaurant role maps only to food category", productCategories.includes('restaurant: "food"')],
   ["supermarket role maps only to grocery category", productCategories.includes('supermarket: "grocery"')],
   ["produce vendor role maps only to produce category", productCategories.includes('produce_vendor: "produce"')],
