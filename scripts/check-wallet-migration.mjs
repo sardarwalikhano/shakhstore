@@ -49,6 +49,18 @@ const cancelOrderApi = readFileSync(resolve(process.cwd(), "src/app/api/orders/c
 const notificationsApi = readFileSync(resolve(process.cwd(), "src/app/api/notifications/route.ts"), "utf8");
 const cashoutsApi = readFileSync(resolve(process.cwd(), "src/app/api/wallet/cashouts/route.ts"), "utf8");
 const captainDeliveriesApiSource = readFileSync(resolve(process.cwd(), "src/app/api/captain/deliveries/route.ts"), "utf8");
+const productCategories = readFileSync(resolve(process.cwd(), "src/lib/product-categories.ts"), "utf8");
+const productsApi = readFileSync(resolve(process.cwd(), "src/app/api/products/route.ts"), "utf8");
+const productByIdApi = readFileSync(resolve(process.cwd(), "src/app/api/products/[id]/route.ts"), "utf8");
+const productsPage = readFileSync(resolve(process.cwd(), "src/app/dashboard/products/page.tsx"), "utf8");
+const marketPage = readFileSync(resolve(process.cwd(), "src/app/market/page.tsx"), "utf8");
+const serviceZone = readFileSync(resolve(process.cwd(), "src/lib/service-zone.ts"), "utf8");
+const serviceZoneMigration = readFileSync(resolve(process.cwd(), "supabase/migrations/20261114071730_store_service_zones_and_checkout_phone.sql"), "utf8");
+const orderApi = readFileSync(resolve(process.cwd(), "src/app/api/orders/route.ts"), "utf8");
+const adminStoresPage = readFileSync(resolve(process.cwd(), "src/app/dashboard/admin/stores/page.tsx"), "utf8");
+const adminStoresApi = readFileSync(resolve(process.cwd(), "src/app/api/admin/stores/route.ts"), "utf8");
+const serviceZoneIntegration = readFileSync(resolve(process.cwd(), "scripts/test-service-zone-migration.sql"), "utf8");
+
 
 
 
@@ -141,6 +153,32 @@ const checks = [
   ["top-up history and new requests use the authenticated user ID", topupApi.includes('.eq("user_id", c.user.id)') && topupApi.includes("user_id: c.user.id")],
   ["captain delivery reads and updates are scoped to the assigned captain", captainDeliveriesApiSource.includes('.eq("captain_id",c.user.id)')],
   ["merchant order queries and updates enforce store ownership", merchantOrdersApi.includes('query=query.in("store_id",storeIds)') && merchantOrdersApi.includes('.in("store_id",permittedStoreIds)')],
+  ["restaurant merchant role maps only to food category", productCategories.includes('restaurant: "food"')],
+  ["supermarket merchant role maps only to grocery category", productCategories.includes('supermarket: "grocery"')],
+  ["produce merchant role maps only to produce category", productCategories.includes('produce_vendor: "produce"')],
+  ["meat and seafood merchant role maps only to meat_seafood category", productCategories.includes('meat_seafood_vendor: "meat_seafood"')],
+  ["merchant catalog list is filtered by the role-specific category", productsApi.includes('q=q.eq("category",roleCategory)')],
+  ["product creation rejects categories outside the merchant role", productsApi.includes("requiredMerchantCategory&&category!==requiredMerchantCategory")],
+  ["merchant product edit rejects legacy products from another category", productByIdApi.includes("current.category!==merchantCategory")],
+  ["merchant product update writes are constrained by the role-specific category", productByIdApi.includes('.eq("category",merchantCategory)')],
+  ["merchant product deletion is constrained by the role-specific category", productByIdApi.includes('.eq("category",requiredCategory)')],
+  ["merchant product page hides other categories", productsPage.includes("{isAdmin ?") && productsPage.includes("productCategoryForRole(userRole)") && productsPage.includes("پۆلێنی دیکە بۆت نیشان نادرێت")],
+  ["checkout explicitly requires a mobile telephone number", marketPage.includes('type="tel"') && marketPage.includes('id="delivery-phone"') && marketPage.includes("ژمارەی مۆبایل *")],
+  ["checkout validates phone format and sends it to order API", marketPage.includes("phoneDigits.length<7") && marketPage.includes("customer_phone:phone.trim()")],
+  ["order API rejects absent or invalid customer phone", orderApi.includes("phoneDigits.length < 7") && orderApi.includes("phoneDigits.length > 15")],
+  ["order API passes the authenticated checkout phone to the RPC", orderApi.includes("p_customer_phone: phone")],
+  ["M18 database RPC requires and persists customer phone", serviceZoneMigration.includes("Customer phone is required or invalid") && serviceZoneMigration.includes("trim(p_customer_phone)")],
+  ["M18 database RPC requires valid delivery coordinates", serviceZoneMigration.includes("Delivery location is required or invalid") && serviceZoneMigration.includes("p_delivery_latitude not between -90 and 90")],
+  ["delivery-zone calculation uses a validated great-circle distance", serviceZone.includes("6371.0088") && serviceZone.includes("isWithinServiceRadius") && serviceZone.includes("isValidGeoPoint")],
+  ["checkout obtains current delivery coordinates with browser geolocation", marketPage.includes("navigator.geolocation.getCurrentPosition") && marketPage.includes("delivery_latitude:deliveryCoordinates.latitude")],
+  ["order API refuses delivery outside the store service radius", orderApi.includes("isWithinServiceRadius(destination, serviceCenter, serviceRadiusKm)") && orderApi.includes("status: 422")],
+  ["outside-zone response tells the customer delivery is unavailable", orderApi.includes("ببورە، بۆ ئەم ناوچەیە خزمەتگوزاریی گەیاندن بەردەست نییە.")],
+  ["M18 database RPC repeats service-zone validation atomically", serviceZoneMigration.includes("Delivery location is outside service zone") && serviceZoneMigration.includes("for share")],
+  ["service-zone database constraint rejects partial zone configuration", ["service_center_lat is not null","service_center_lng is not null","service_radius_km is not null"].every((s) => serviceZoneMigration.includes(s))],
+  ["Super Admin store screen can configure service-zone centre and radius", adminStoresPage.includes("saveServiceZone") && adminStoresPage.includes("serviceRadiusKm") && adminStoresPage.includes("captureZoneCenter")],
+  ["admin service-zone API only updates approved stores", adminStoresApi.includes("Only approved stores can have a delivery zone configured") && adminStoresApi.includes('role!=="super_admin"&&user.app_metadata?.role!=="admin"')],
+  ["M18 PostgreSQL fixture covers phone, zone, stock and RPC grants", serviceZoneIntegration.includes("Customer phone is required or invalid") && serviceZoneIntegration.includes("Delivery location is outside service zone") && serviceZoneIntegration.includes("service_role must execute place_store_order")],
+
 
 
 
@@ -153,5 +191,5 @@ for (const [label, passed] of checks) {
   if (!passed) failures += 1;
 }
 
-console.log(`\nWallet migration invariants: ${checks.length - failures}/${checks.length} passed.`);
+console.log(`\nWallet, catalog and checkout invariants: ${checks.length - failures}/${checks.length} passed.`);
 if (failures > 0) process.exitCode = 1;
