@@ -5,6 +5,26 @@ import { createClient } from "@supabase/supabase-js";
 
 export const runtime="nodejs";
 export const dynamic="force-dynamic";
+type AdminStoreRow = {
+  id: string;
+  owner_id: string;
+  name: string;
+  slug: string;
+  store_type: string;
+  description: string | null;
+  phone: string | null;
+  address: string | null;
+  status: string;
+  admin_note: string | null;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  created_at: string;
+  delivery_fee_iqd: number | null;
+  service_center_lat: number | null;
+  service_center_lng: number | null;
+  service_radius_km: number | null;
+};
+
 async function adminContext(){
   const url=process.env.NEXT_PUBLIC_SUPABASE_URL,anon=process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,service=process.env.SUPABASE_SERVICE_ROLE_KEY;
   if(!url||!anon||!service)return {response:NextResponse.json({error:"Server configuration is incomplete"},{status:500})};
@@ -20,20 +40,20 @@ export async function GET(){
     const ctx=await adminContext();if("response" in ctx)return ctx.response;
     const selectBase="id,owner_id,name,slug,store_type,description,phone,address,status,admin_note,reviewed_by,reviewed_at,created_at";
     const primary=await ctx.db.from("stores").select(selectBase+",delivery_fee_iqd,service_center_lat,service_center_lng,service_radius_km").order("created_at",{ascending:false}).limit(200);
-    let rows=primary.data;
+    let rows:AdminStoreRow[]=(primary.data??[]) as unknown as AdminStoreRow[];
     if(primary.error){
       if(primary.error.code!=="42703")throw primary.error;
       const feeFallback=await ctx.db.from("stores").select(selectBase+",delivery_fee_iqd").order("created_at",{ascending:false}).limit(200);
       if(!feeFallback.error){
-        rows=(feeFallback.data??[]).map(s=>({...s,service_center_lat:null,service_center_lng:null,service_radius_km:null}));
+        rows=(feeFallback.data??[]).map(s=>({...s,service_center_lat:null,service_center_lng:null,service_radius_km:null})) as unknown as AdminStoreRow[];
       }else{
         if(feeFallback.error.code!=="42703")throw feeFallback.error;
         const legacyFallback=await ctx.db.from("stores").select(selectBase).order("created_at",{ascending:false}).limit(200);
         if(legacyFallback.error)throw legacyFallback.error;
-        rows=(legacyFallback.data??[]).map(s=>({...s,delivery_fee_iqd:null,service_center_lat:null,service_center_lng:null,service_radius_km:null}));
+        rows=(legacyFallback.data??[]).map(s=>({...s,delivery_fee_iqd:null,service_center_lat:null,service_center_lng:null,service_radius_km:null})) as unknown as AdminStoreRow[];
       }
     }
-    const stores=await Promise.all((rows??[]).map(async s=>{const {data}=await ctx.db.auth.admin.getUserById(s.owner_id);return {...s,owner_email:data.user?.email??null};}));
+    const stores=await Promise.all(rows.map(async (s:AdminStoreRow)=>{const {data}=await ctx.db.auth.admin.getUserById(s.owner_id);return {...s,owner_email:data.user?.email??null};}));
     return NextResponse.json({stores});
   }catch(e){console.error("Admin stores list failed",e);return NextResponse.json({error:"Unable to load stores"},{status:500});}
 }
