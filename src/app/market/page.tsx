@@ -8,6 +8,8 @@ type Product = {
   id: string; store_id: string | null; name: string; description: string | null;
   category: string; price_iqd: number; image_url: string | null; stock_quantity: number;
   delivery_fee_iqd: number | null;
+  delivery_zone_configured: boolean;
+  delivery_zone_radius_km: number | null;
   stores: { id: string; name: string; slug: string; store_type: string; status: string } | { id: string; name: string; slug: string; store_type: string; status: string }[] | null;
 };
 const money = (n:number) => new Intl.NumberFormat("en-US").format(n) + " د.ع";
@@ -17,6 +19,9 @@ export default function MarketPage() {
   const [products,setProducts] = useState<Product[]>([]);
   const [cart,setCart] = useState<Record<string,number>>({});
   const [address,setAddress] = useState("");
+  const [phone,setPhone] = useState("");
+  const [deliveryCoordinates,setDeliveryCoordinates] = useState<{latitude:number;longitude:number}|null>(null);
+  const [locating,setLocating] = useState(false);
   const [loading,setLoading] = useState(true);
   const [placing,setPlacing] = useState(false);
   const [error,setError] = useState("");
@@ -39,6 +44,7 @@ export default function MarketPage() {
   const subtotal = useMemo(()=>selected.reduce((sum,p)=>sum+p.price_iqd*(cart[p.id]??0),0),[selected,cart]);
   const orderableStore = storeIds.length === 1 && storeIds[0] !== null;
   const deliveryFeeConfigured = orderableStore && selected[0]?.delivery_fee_iqd !== null && selected[0]?.delivery_fee_iqd !== undefined;
+  const deliveryZoneConfigured = orderableStore && selected[0]?.delivery_zone_configured === true;
   const deliveryFee = deliveryFeeConfigured ? Number(selected[0]?.delivery_fee_iqd) : 0;
   const grandTotal = subtotal + deliveryFee;
   const count = selected.reduce((sum,p)=>sum+(cart[p.id]??0),0);
@@ -52,15 +58,41 @@ export default function MarketPage() {
     setNotice("");
   }
 
+  function captureDeliveryLocation() {
+    if(!navigator.geolocation) { setError("ئەم وێبگەڕە شوێنی GPS پشتگیری ناکات.");return; }
+    setLocating(true);setError("");setNotice("");
+    navigator.geolocation.getCurrentPosition(position=>{
+      setDeliveryCoordinates({latitude:position.coords.latitude,longitude:position.coords.longitude});
+      setLocating(false);
+      setNotice("شوێنی گەیاندن دیاری کرا.");
+    },geoError=>{
+      setLocating(false);
+      setError(geoError.code===1?"تکایە مۆڵەتی شوێن بدە تا بتوانین زۆنی گەیاندن بپشکنین.":"نەتوانرا شوێنی گەیاندن وەربگیرێت؛ GPS چالاک بکە و دووبارە هەوڵ بدە.");
+    },{enableHighAccuracy:true,timeout:15000,maximumAge:0});
+  }
+
   async function checkout() {
     if(selected.length===0) return;
     if(storeIds.length!==1) { setError("هەر داواکارییەک دەبێت لە یەک دوکانەوە بێت. تکایە بەرهەمەکانی دوکانێک هەڵبژێرە."); return; }
     if(!orderableStore) { setError("ئەم بەرهەمە لە کاتالۆگی SHAKH STORE ـە و هێشتا بۆ داواکاری چالاک نەکراوە."); return; }
-    if(!deliveryFeeConfigured) { setError("کرێی گەیاندن بۆ ئەم دوکانە ئامادە نییە. تکایە مایگرەیشنی 0009 جێبەجێ بکە."); return; }
+    if(!deliveryFeeConfigured) { setError("کرێی گەیاندن بۆ ئەم دوکانە ئامادە نییە. تکایە پەیوەندی بە بەڕێوەبەر بکە."); return; }
+    if(!deliveryZoneConfigured) { setError("ئەم دوکانە هێشتا ناوچەی گەیاندنی خۆی دیاری نەکردووە."); return; }
     if(address.trim().length<5) { setError("ناونیشانی گەیاندن بە وردی بنووسە."); return; }
+    const phoneDigits=phone.replace(/[^0-9]/g,"");
+    if(phone.trim().length<7||phone.trim().length>24||! /^[0-9+() -]+$/.test(phone.trim())||phoneDigits.length<7||phoneDigits.length>15) {
+      setError("تکایە ژمارەی مۆبایلێکی دروست بنووسە بۆ پەیوەندی لەسەر ئۆردەرەکەت.");return;
+    }
+    if(!deliveryCoordinates) { setError("تکایە لە شوێنی گەیاندن شوێنی خۆت دیاری بکە.");return; }
     setPlacing(true);setError("");setNotice("");
     try {
-      const res=await fetch("/api/orders",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({items:selected.map(p=>({product_id:p.id,quantity:cart[p.id]})),delivery_address:address.trim(),delivery_fee_iqd:0})});
+      const res=await fetch("/api/orders",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
+        items:selected.map(p=>({product_id:p.id,quantity:cart[p.id]})),
+        delivery_address:address.trim(),
+        customer_phone:phone.trim(),
+        delivery_latitude:deliveryCoordinates.latitude,
+        delivery_longitude:deliveryCoordinates.longitude,
+        delivery_fee_iqd:0
+      })});
       const data=await res.json();
       if(!res.ok) throw new Error(data.error??"تۆمارکردنی داواکاری سەرکەوتوو نەبوو.");
       setCart({});setNotice("داواکارییەکەت تۆمارکرا. ژمارەی داواکاری: "+data.order_id);
@@ -93,10 +125,20 @@ export default function MarketPage() {
           <div className="flex items-center gap-2"><ShoppingCart className="text-orange-500"/><h2 className="text-lg font-black">سەبەتەی کڕین</h2><span className="mr-auto rounded-full bg-orange-50 px-2 py-1 text-xs font-bold text-orange-700">{count}</span></div>
           <div className="my-4 space-y-3">{selected.length===0?<p className="py-5 text-center text-sm text-slate-400">هێشتا بەرهەمێکت هەڵنەبژاردووە.</p>:selected.map(p=><div key={p.id} className="flex justify-between gap-2 text-sm"><span>{p.name} × {cart[p.id]}</span><strong>{money(p.price_iqd*cart[p.id])}</strong></div>)}</div>
           {storeIds.length>1&&<p className="mb-3 rounded-lg bg-amber-50 p-3 text-xs text-amber-800">بەرهەمەکان لە زیاتر لە یەک دوکانن. داواکارییەکان جیاواز تۆمار بکە.</p>}
-          <label className="mb-2 block text-sm font-bold" htmlFor="delivery-address">ناونیشانی گەیاندن</label>
+          <label className="mb-2 block text-sm font-bold" htmlFor="delivery-address">ناونیشانی گەیاندن *</label>
           <textarea id="delivery-address" value={address} onChange={e=>setAddress(e.target.value)} rows={3} maxLength={1000} placeholder="شار، گەڕەک، شەقام و نیشانە..." className="w-full rounded-xl border border-slate-200 p-3 text-sm outline-none focus:border-orange-400"/>
+          <label className="mb-2 mt-4 block text-sm font-bold" htmlFor="delivery-phone">ژمارەی مۆبایل *</label>
+          <input id="delivery-phone" type="tel" inputMode="tel" autoComplete="tel" required minLength={7} maxLength={24} dir="ltr" value={phone} onChange={e=>setPhone(e.target.value)} placeholder="07XXXXXXXXX" className="w-full rounded-xl border border-slate-200 p-3 text-left text-sm outline-none focus:border-orange-400"/>
+          <div className="mt-4 rounded-xl border border-slate-200 p-3">
+            <p className="text-sm font-bold">شوێنی گەیاندن</p>
+            <p className="mt-1 text-xs leading-5 text-slate-500">تکایە لە شوێنی گەیاندن بوەستە و GPS دیاری بکە بۆ پشکنینی ناوچەی فرۆشتن.</p>
+            <button type="button" disabled={locating||!deliveryZoneConfigured} onClick={captureDeliveryLocation} className="mt-3 w-full rounded-lg border border-orange-300 bg-orange-50 px-3 py-2 text-sm font-bold text-orange-800 disabled:opacity-50">{locating?"وەرگرتنی شوێن...":deliveryCoordinates?"دووبارە دیاریکردنەوەی شوێن":"شوێنی گەیاندن دیاری بکە"}</button>
+            {deliveryCoordinates&&<p className="mt-2 text-xs text-green-700">شوێن دیاریکرا: {deliveryCoordinates.latitude.toFixed(5)}, {deliveryCoordinates.longitude.toFixed(5)}</p>}
+            {orderableStore&&!deliveryZoneConfigured&&<p className="mt-2 text-xs text-amber-800">ببورە، ئەم دوکانە هێشتا زۆنی گەیاندنی خۆی ڕێکنەخستووە.</p>}
+            {deliveryZoneConfigured&&selected[0]?.delivery_zone_radius_km!==null&&<p className="mt-2 text-xs text-slate-500">مەودای گەیاندن: {selected[0]?.delivery_zone_radius_km} کیلۆمەتر لە ناوەندی دوکانەوە.</p>}
+          </div>
           <div className="mt-4 space-y-2 border-t pt-4 text-sm"><div className="flex justify-between"><span className="text-slate-500">کۆی بەرهەمەکان</span><strong>{money(subtotal)}</strong></div><div className="flex justify-between"><span className="text-slate-500">کرێی گەیاندن</span><strong>{deliveryFeeConfigured?money(deliveryFee):storeIds.length===1?"ئامادە نییە":"—"}</strong></div><div className="flex justify-between border-t pt-2"><span className="font-black">کۆی گشتی</span><strong className="text-lg text-orange-600">{money(grandTotal)}</strong></div></div>
-          <button disabled={placing||selected.length===0||storeIds.length!==1||!orderableStore||!deliveryFeeConfigured} onClick={()=>void checkout()} className="mt-4 w-full rounded-xl bg-orange-500 px-4 py-3 font-black text-white disabled:cursor-not-allowed disabled:opacity-40">{placing?"تۆمارکردن...":"تەواوکردنی کڕین"}</button>
+          <button disabled={placing||locating||selected.length===0||storeIds.length!==1||!orderableStore||!deliveryFeeConfigured||!deliveryZoneConfigured} onClick={()=>void checkout()} className="mt-4 w-full rounded-xl bg-orange-500 px-4 py-3 font-black text-white disabled:cursor-not-allowed disabled:opacity-40">{placing?"تۆمارکردن...":"تەواوکردنی کڕین"}</button>
           <p className="mt-3 text-xs leading-5 text-slate-400">پارەدان لە کاتی گەیاندن/ڕێککەوتنی دواترەوەیە؛ گیت‌وەی پارەدان هێشتا پەیوەست نەکراوە.</p>
         </aside>
       </div>
