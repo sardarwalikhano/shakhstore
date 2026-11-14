@@ -43,14 +43,30 @@ export async function GET() {
     ]);
     if (error) throw error;
     if (settingsError) throw settingsError;
-    const rows = commissions ?? [];
-    const accrued = rows.filter((row) => row.status === "accrued");
-    const paid = rows.filter((row) => row.status === "paid");
+    // Keep the activity feed bounded, but calculate balances from every
+    // commission row. Summing only the latest 200 rows silently under-reports
+    // lifetime accrued and paid earnings for active captains.
+    let accruedTotal = 0;
+    let paidTotal = 0;
+    const pageSize = 1000;
+    for (let offset = 0; ; offset += pageSize) {
+      const { data: totalsPage, error: totalsError } = await db
+        .from("captain_commissions")
+        .select("commission_iqd,status")
+        .eq("captain_id", user.id)
+        .range(offset, offset + pageSize - 1);
+      if (totalsError) throw totalsError;
+      for (const row of totalsPage ?? []) {
+        if (row.status === "accrued") accruedTotal += Number(row.commission_iqd);
+        if (row.status === "paid") paidTotal += Number(row.commission_iqd);
+      }
+      if (!totalsPage || totalsPage.length < pageSize) break;
+    }
     return NextResponse.json({
       commission_rate_bps: settings.commission_rate_bps,
-      accrued_total_iqd: accrued.reduce((sum, row) => sum + Number(row.commission_iqd), 0),
-      paid_total_iqd: paid.reduce((sum, row) => sum + Number(row.commission_iqd), 0),
-      commissions: rows,
+      accrued_total_iqd: accruedTotal,
+      paid_total_iqd: paidTotal,
+      commissions: commissions ?? [],
     });
   } catch (error) {
     console.error("Captain earnings GET failed", error);
