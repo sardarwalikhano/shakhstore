@@ -222,7 +222,7 @@ const checks = [
   ["service-zone database constraint rejects partial zone configuration", ["service_center_lat is not null","service_center_lng is not null","service_radius_km is not null"].every((s) => serviceZoneMigration.includes(s))],
   ["Super Admin store screen can configure service-zone centre and radius", adminStoresPage.includes("saveServiceZone") && adminStoresPage.includes("serviceRadiusKm") && adminStoresPage.includes("captureZoneCenter")],
   ["admin service-zone API only updates approved stores", adminStoresApi.includes("Only approved stores can have a delivery zone configured") && adminStoresApi.includes('role!=="super_admin"&&user.app_metadata?.role!=="admin"')],
-  ["M18 PostgreSQL fixture covers phone, zone, stock and RPC grants", serviceZoneIntegration.includes("Customer phone is required or invalid") && serviceZoneIntegration.includes("Delivery location is outside service zone") && serviceZoneIntegration.includes("service_role must execute place_store_order")],
+  ["M18 PostgreSQL fixture covers phone, zone, stock and RPC grants", serviceZoneIntegration.includes("Customer phone is required or invalid") && serviceZoneIntegration.includes("Delivery location is outside service zone") && serviceZoneIntegration.includes("service_role must execute the new order RPC")],
 
 
 
