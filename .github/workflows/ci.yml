@@ -74,7 +74,7 @@ jobs:
         run: npm run build
 
   wallet-migration-integration:
-    name: PostgreSQL 17 wallet migration integration
+    name: PostgreSQL 17 wallet and delivery integration
     runs-on: ubuntu-latest
     timeout-minutes: 10
     services:
@@ -102,3 +102,12 @@ jobs:
         env:
           TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/shakh_wallet_test
         run: psql "$TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/test-wallet-topup-migration.sql
+
+      - name: Apply M18 and run delivery-zone checkout integration tests
+        env:
+          PGPASSWORD: postgres
+          TEST_ORDER_DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
+        run: |
+          createdb -h localhost -U postgres shakh_order_test
+          export TEST_ORDER_DATABASE_URL=postgres://postgres:postgres@localhost:5432/shakh_order_test
+          psql "$TEST_ORDER_DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/test-order-service-zone-migration.sql
