@@ -25,6 +25,7 @@ The feature branch contains these additive migrations:
 4. `0015_cashout_external_asset_accounting.sql` — intermediate accounting correction; superseded for the manual-payout workflow by M16.
 5. `0016_manual_cashout_settlement.sql` — separates approval from physical payout and posts the internal 75/25 settlement only after Super Admin confirms the manual transfer.
 6. `20261112183000_wallet_topup_duplicate_protection.sql` — stores receipt SHA-256 and normalized provider payment references with database-enforced unique indexes; protects legacy top-up review. Its PostgreSQL 17 integration suite runs in CI against an isolated temporary database.
+7. `20261114071730_store_service_zones_and_checkout_phone.sql` (M18) — adds per-store delivery-zone centre/radius, requires a valid customer mobile number and GPS destination at checkout, and rejects orders outside the store's configured service radius. Its PostgreSQL 17 integration fixture runs in CI against an isolated database.
 
 These migrations depend on the existing wallet, cashout, storage, and commission schema. Do not apply them in isolation or assume the production migration history is complete. The production project has previously shown existing application tables while its migration history endpoint returned no applied migrations. Reconcile the live schema, functions, constraints, storage policies, and migration history before applying anything.
 
@@ -129,3 +130,19 @@ Before enabling these features, verify:
 - [ ] Legacy approved requests with an existing ledger transaction are marked paid without duplicate ledger posting.
 - [ ] Physical FastPay/FIB transfer is confirmed before marking paid.
 - [ ] Captain commission accrual uses 80/20 for new eligible deliveries.
+
+
+## 8. Catalogue categories and delivery eligibility
+
+Merchant product categories are determined by the trusted `app_metadata.role` and enforced by both the product API and product-management screen:
+
+- `restaurant` → `food`
+- `supermarket` → `grocery`
+- `produce_vendor` → `produce`
+- `meat_seafood_vendor` → `meat_seafood`
+
+Merchants only see and manage products in their own store and mapped category. The API rejects a cross-category create, edit or delete attempt; Admin and Super Admin retain the cross-category management view.
+
+At checkout, customers must provide a telephone number and select their actual delivery location using GPS. The API validates both again and the database RPC repeats the service-zone and phone checks before it writes the order or decrements stock. If the destination is outside the store's configured radius, checkout is refused with the Kurdish unavailable-area message. An approved store must have a GPS centre and a radius from 0.1 to 100 km configured by an authorized admin before it can accept orders.
+
+The service-zone radius is a circular distance calculation from the configured centre, not a road-network travel-time estimate. Stores are responsible for supplying an accurate centre and radius. Do not assume a radius is configured merely because the store is approved.
