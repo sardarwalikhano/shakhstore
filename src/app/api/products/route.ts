@@ -52,7 +52,15 @@ export async function GET(){
      status:store.status
     }:null;
     return {
-     ...p,
+     id:p.id,
+     store_id:p.store_id,
+     name:p.name,
+     description:p.description,
+     category:p.category,
+     price_iqd:p.price_iqd,
+     image_url:p.image_url,
+     stock_quantity:p.stock_quantity,
+     created_at:p.created_at,
      stores:Array.isArray(p.stores)?(publicStore?[publicStore]:[]):publicStore,
      delivery_fee_iqd:p.store_id?feeByStore.get(p.store_id)??null:null,
      delivery_zone_configured:zoneConfigured,
@@ -71,7 +79,21 @@ export async function GET(){
      .is("store_id",null).in("owner_id",adminIds).eq("is_active",true)
      .order("created_at",{ascending:false}).limit(200);
     if(orphanError)throw orphanError;
-    legacy=(orphaned??[]).map(p=>({...p,store_id:null,stores:null,delivery_fee_iqd:null,delivery_zone_configured:false,delivery_zone_radius_km:null}));
+    legacy=(orphaned??[]).map(p=>({
+     id:p.id,
+     store_id:null,
+     name:p.name,
+     description:p.description,
+     category:p.category,
+     price_iqd:p.price_iqd,
+     image_url:p.image_url,
+     stock_quantity:p.stock_quantity,
+     created_at:p.created_at,
+     stores:null,
+     delivery_fee_iqd:null,
+     delivery_zone_configured:false,
+     delivery_zone_radius_km:null
+    }));
    }
    const products=[...productsWithFees,...legacy].sort((x,y)=>Number(new Date(y.created_at??0))-Number(new Date(x.created_at??0))).slice(0,200);
    return NextResponse.json({products});
