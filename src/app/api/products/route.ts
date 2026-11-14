@@ -71,9 +71,13 @@ export async function GET(request:Request){
    });
    // Legacy Super Admin posts created before store selection have a null store_id.
    // Keep those platform-owned items visible as SHAKH STORE catalog entries.
-   const {data:authUsers,error:usersError}=await c.db.auth.admin.listUsers({page:1,perPage:200});
-   if(usersError)throw usersError;
-   const adminIds=authUsers.users.filter(u=>["super_admin","admin"].includes(String(u.app_metadata?.role??""))).map(u=>u.id);
+   const adminIds:string[]=[];
+   for(let page=1;;page++){
+    const {data:authUsers,error:usersError}=await c.db.auth.admin.listUsers({page,perPage:200});
+    if(usersError)throw usersError;
+    adminIds.push(...authUsers.users.filter(u=>["super_admin","admin"].includes(String(u.app_metadata?.role??""))).map(u=>u.id));
+    if(authUsers.users.length<200)break;
+   }
    let legacy:LegacyProduct[]=[];
    if(adminIds.length){
     const {data:orphaned,error:orphanError}=await c.db.from("products")
