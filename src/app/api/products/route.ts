@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
+import { productCategoryForRole } from "@/lib/product-categories";
 
 export const runtime="nodejs";
 export const dynamic="force-dynamic";
@@ -63,10 +64,18 @@ export async function GET(){
    if(storeError)throw storeError;
    if(!store)return NextResponse.json({products:[],role:c.role,store_status:"inactive"});
    q=q.eq("owner_id",c.user.id).eq("store_id",store.id);
+   const roleCategory=productCategoryForRole(c.role);
+   if(roleCategory)q=q.eq("category",roleCategory);
   }
   else if(c.role!=="super_admin"&&c.role!=="admin")return NextResponse.json({error:"Access denied"},{status:403});
   const {data,error}=await q;if(error)throw error;
-  return NextResponse.json({products:data??[],role:c.role});
+  return NextResponse.json({
+   products:data??[],
+   role:c.role,
+   allowedCategories:c.role==="admin"||c.role==="super_admin"
+    ? ["food","grocery","produce","meat_seafood","drinks","household","other"]
+    : productCategoryForRole(c.role)?[productCategoryForRole(c.role)]:[]
+  });
  }catch(e){console.error("Products GET failed",e);return NextResponse.json({error:"Unable to load products"},{status:500});}
 }
 export async function POST(request:Request){
@@ -80,6 +89,10 @@ export async function POST(request:Request){
   const price=Number(v.price_iqd),stock=Number(v.stock_quantity??0);
   if(name.length<2||name.length>160)return NextResponse.json({error:"ناوی بەرهەم دەبێت لە ٢ تا ١٦٠ پیت بێت."},{status:400});
   if(!CATEGORIES.includes(category as typeof CATEGORIES[number]))return NextResponse.json({error:"پۆلێنی بەرهەم دروست نییە."},{status:400});
+  const requiredMerchantCategory=productCategoryForRole(c.role);
+  if(requiredMerchantCategory&&category!==requiredMerchantCategory){
+   return NextResponse.json({error:"تۆ تەنها دەتوانیت لە پۆلێنی تایبەت بە جۆری دوکانەکەت بەرهەم زیاد بکەیت."},{status:403});
+  }
   if(!Number.isSafeInteger(price)||price<=0||price>9000000000000)return NextResponse.json({error:"نرخ دەبێت ژمارەیەکی دروستی دیناری عێراقی بێت."},{status:400});
   if(!Number.isSafeInteger(stock)||stock<0||stock>100000000)return NextResponse.json({error:"بڕی کۆگا دروست نییە."},{status:400});
   const image=validImage(v.image_url);if(image===undefined)return NextResponse.json({error:"لینکی وێنە دەبێت HTTPS بێت."},{status:400});
