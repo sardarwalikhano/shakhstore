@@ -102,6 +102,7 @@ const review = functionBody("review_wallet_cashout");
 const paid = functionBody("mark_wallet_cashout_paid");
 
 const checks = [
+  ["public catalog strips private store service-zone centre coordinates", productsApi.includes("const publicStore=store?") && productsApi.includes("stores:Array.isArray(p.stores)?(publicStore?[publicStore]:[]):publicStore") && !productsApi.includes("stores:store")],
   ["wallet transfer validates positive amount", /p_amount_iqd is null or p_amount_iqd <= 0/i.test(transfer)],
   ["wallet transfer enforces cashout reservation", transfer.includes("Insufficient available wallet balance after cashout reservations")],
   ["referral reward validates positive amount", /p_total_iqd is null or p_total_iqd <= 0/i.test(reward)],
