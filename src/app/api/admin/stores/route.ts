@@ -18,14 +18,20 @@ async function adminContext(){
 export async function GET(){
   try{
     const ctx=await adminContext();if("response" in ctx)return ctx.response;
-    const primary=await ctx.db.from("stores").select("id,owner_id,name,slug,store_type,description,phone,address,status,delivery_fee_iqd,admin_note,reviewed_by,reviewed_at,created_at").order("created_at",{ascending:false}).limit(200);
+    const selectBase="id,owner_id,name,slug,store_type,description,phone,address,status,admin_note,reviewed_by,reviewed_at,created_at";
+    const primary=await ctx.db.from("stores").select(selectBase+",delivery_fee_iqd,service_center_lat,service_center_lng,service_radius_km").order("created_at",{ascending:false}).limit(200);
     let rows=primary.data;
     if(primary.error){
-      const missingFeeColumn=primary.error.code==="42703"||primary.error.message.includes("delivery_fee_iqd");
-      if(!missingFeeColumn)throw primary.error;
-      const fallback=await ctx.db.from("stores").select("id,owner_id,name,slug,store_type,description,phone,address,status,admin_note,reviewed_by,reviewed_at,created_at").order("created_at",{ascending:false}).limit(200);
-      if(fallback.error)throw fallback.error;
-      rows=(fallback.data??[]).map(s=>({...s,delivery_fee_iqd:null}));
+      if(primary.error.code!=="42703")throw primary.error;
+      const feeFallback=await ctx.db.from("stores").select(selectBase+",delivery_fee_iqd").order("created_at",{ascending:false}).limit(200);
+      if(!feeFallback.error){
+        rows=(feeFallback.data??[]).map(s=>({...s,service_center_lat:null,service_center_lng:null,service_radius_km:null}));
+      }else{
+        if(feeFallback.error.code!=="42703")throw feeFallback.error;
+        const legacyFallback=await ctx.db.from("stores").select(selectBase).order("created_at",{ascending:false}).limit(200);
+        if(legacyFallback.error)throw legacyFallback.error;
+        rows=(legacyFallback.data??[]).map(s=>({...s,delivery_fee_iqd:null,service_center_lat:null,service_center_lng:null,service_radius_km:null}));
+      }
     }
     const stores=await Promise.all((rows??[]).map(async s=>{const {data}=await ctx.db.auth.admin.getUserById(s.owner_id);return {...s,owner_email:data.user?.email??null};}));
     return NextResponse.json({stores});
@@ -37,6 +43,31 @@ export async function PATCH(request:Request){
     const body:unknown=await request.json();if(!body||typeof body!=="object")return NextResponse.json({error:"Invalid request"},{status:400});
     const v=body as Record<string,unknown>;
     if(typeof v.storeId!=="string"||!/^[0-9a-f-]{36}$/i.test(v.storeId))return NextResponse.json({error:"Invalid store ID"},{status:400});
+    if("serviceCenterLat" in v || "serviceCenterLng" in v || "serviceRadiusKm" in v){
+      if(!("serviceCenterLat" in v)||!("serviceCenterLng" in v)||!("serviceRadiusKm" in v)){
+        return NextResponse.json({error:"Latitude, longitude and radius must be submitted together"},{status:400});
+      }
+      const clearZone=v.serviceCenterLat===null&&v.serviceCenterLng===null&&v.serviceRadiusKm===null;
+      let zone:{service_center_lat:number|null;service_center_lng:number|null;service_radius_km:number|null};
+      if(clearZone){
+        zone={service_center_lat:null,service_center_lng:null,service_radius_km:null};
+      }else{
+        const lat=Number(v.serviceCenterLat),lng=Number(v.serviceCenterLng),radius=Number(v.serviceRadiusKm);
+        if(!Number.isFinite(lat)||lat < -90||lat > 90||!Number.isFinite(lng)||lng < -180||lng > 180||!Number.isFinite(radius)||radius < 0.1||radius > 100){
+          return NextResponse.json({error:"Service zone needs valid coordinates and a radius from 0.1 to 100 km"},{status:400});
+        }
+        zone={service_center_lat:lat,service_center_lng:lng,service_radius_km:radius};
+      }
+      const {data:existing,error:findZoneError}=await ctx.db.from("stores").select("id,status").eq("id",v.storeId).maybeSingle();
+      if(findZoneError)throw findZoneError;
+      if(!existing)return NextResponse.json({error:"Store not found"},{status:404});
+      if(existing.status!=="approved")return NextResponse.json({error:"Only approved stores can have a delivery zone configured"},{status:409});
+      const {data,error}=await ctx.db.from("stores").update(zone).eq("id",v.storeId).eq("status","approved")
+        .select("id,service_center_lat,service_center_lng,service_radius_km").maybeSingle();
+      if(error)throw error;
+      if(!data)return NextResponse.json({error:"Store status changed. Refresh and try again."},{status:409});
+      return NextResponse.json({success:true,store:data});
+    }
     if("deliveryFeeIqd" in v){
       const fee=Number(v.deliveryFeeIqd);
       if(!Number.isSafeInteger(fee)||fee<0||fee>100000000)return NextResponse.json({error:"Delivery fee must be between 0 and 100,000,000 IQD"},{status:400});
