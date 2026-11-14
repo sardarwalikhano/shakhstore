@@ -247,7 +247,7 @@ reset role;
 
 -- Malformed mobile numbers and invalid GPS coordinates are rejected.
 set role service_role;
-do $
+do $invalid_phone_gps$
 begin
   begin
     perform public.place_store_order(
@@ -309,7 +309,7 @@ begin
       end if;
   end;
 end
-$;
+$invalid_phone_gps$;
 reset role;
 
 -- A store without all three service-zone values is not orderable.
