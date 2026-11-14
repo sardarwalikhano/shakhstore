@@ -24,7 +24,7 @@ export async function GET(){
   const c=await context();if("response" in c)return c.response;
   if(c.role==="customer"){
    const {data,error}=await c.db.from("products")
-    .select("id,store_id,owner_id,name,description,category,price_iqd,image_url,stock_quantity,created_at,stores!inner(id,name,slug,store_type,status)")
+    .select("id,store_id,owner_id,name,description,category,price_iqd,image_url,stock_quantity,created_at,stores!inner(id,name,slug,store_type,status,service_center_lat,service_center_lng,service_radius_km)")
     .eq("is_active",true).eq("stores.status","approved")
     .order("created_at",{ascending:false}).limit(200);
    if(error)throw error;
@@ -37,10 +37,18 @@ export async function GET(){
      catalogStoreIds.forEach(id=>feeByStore.set(id,null));
     }else (fees??[]).forEach(store=>feeByStore.set(store.id,Number(store.delivery_fee_iqd)));
    }
-   const productsWithFees=(data??[]).map(p=>({
-    ...p,
-    delivery_fee_iqd:p.store_id?feeByStore.get(p.store_id)??null:null
-   }));
+   const productsWithFees=(data??[]).map(p=>{
+    const store=Array.isArray(p.stores)?p.stores[0]:p.stores;
+    const zoneConfigured=Boolean(store?.service_center_lat!==null&&store?.service_center_lat!==undefined
+      &&store?.service_center_lng!==null&&store?.service_center_lng!==undefined
+      &&store?.service_radius_km!==null&&store?.service_radius_km!==undefined);
+    return {
+     ...p,
+     delivery_fee_iqd:p.store_id?feeByStore.get(p.store_id)??null:null,
+     delivery_zone_configured:zoneConfigured,
+     delivery_zone_radius_km:zoneConfigured?Number(store?.service_radius_km):null
+    };
+   });
    // Legacy Super Admin posts created before store selection have a null store_id.
    // Keep those platform-owned items visible as SHAKH STORE catalog entries.
    const {data:authUsers,error:usersError}=await c.db.auth.admin.listUsers({page:1,perPage:200});
@@ -53,7 +61,7 @@ export async function GET(){
      .is("store_id",null).in("owner_id",adminIds).eq("is_active",true)
      .order("created_at",{ascending:false}).limit(200);
     if(orphanError)throw orphanError;
-    legacy=(orphaned??[]).map(p=>({...p,store_id:null,stores:null}));
+    legacy=(orphaned??[]).map(p=>({...p,store_id:null,stores:null,delivery_fee_iqd:null,delivery_zone_configured:false,delivery_zone_radius_km:null}));
    }
    const products=[...productsWithFees,...legacy].sort((x,y)=>Number(new Date(y.created_at??0))-Number(new Date(x.created_at??0))).slice(0,200);
    return NextResponse.json({products});
