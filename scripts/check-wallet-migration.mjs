@@ -155,6 +155,7 @@ const checks = [
   ["store onboarding pages allow only merchant roles", ["restaurant","supermarket","produce_vendor","meat_seafood_vendor"].every((role) => storeLayout.includes('"' + role + '"')) && !storeLayout.includes('"customer"') && !storeLayout.includes('"admin"')],
   ["captain delivery API verifies trusted captain role", captainDeliveriesApi.includes('user.app_metadata?.role!=="captain"')],
   ["captain earnings API verifies trusted captain role", captainEarningsApi.includes('user.app_metadata?.role !== "captain"')],
+  ["captain lifetime commission totals paginate beyond the 200-row activity feed", captainEarningsApi.includes(".range(offset, offset + pageSize - 1)") && captainEarningsApi.includes('.order("id", { ascending: true })') && captainEarningsApi.includes("accruedTotal") && captainEarningsApi.includes("paidTotal")],
   ["merchant orders API checks trusted merchant or admin role", merchantOrdersApi.includes("MERCHANT_ROLES.includes(role)") && merchantOrdersApi.includes('role!=="admin"&&role!=="super_admin"')],
   ["store API binds submitted store type to the trusted merchant role", storesApi.includes('TYPES.includes(role as typeof TYPES[number])') && storesApi.includes("storeType!==role")],
   ["store onboarding API returns the trusted role for its form", storesApi.includes("store:data,role:ctx.role")],
