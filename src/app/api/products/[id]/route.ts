@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
+import { productCategoryForRole } from "@/lib/product-categories";
 
 export const runtime="nodejs";
 export const dynamic="force-dynamic";
@@ -35,7 +36,12 @@ export async function PATCH(request:Request,{params}:Params){
   const v=raw as Record<string,unknown>,patch:Record<string,unknown>={};
   if("name" in v){if(typeof v.name!=="string"||v.name.trim().length<2||v.name.trim().length>160)return NextResponse.json({error:"Product name is invalid"},{status:400});patch.name=v.name.trim();}
   if("description" in v)patch.description=typeof v.description==="string"?v.description.trim().slice(0,4000):null;
-  if("category" in v){if(typeof v.category!=="string"||!CATEGORIES.includes(v.category))return NextResponse.json({error:"Invalid category"},{status:400});patch.category=v.category;}
+  if("category" in v){
+   if(typeof v.category!=="string"||!CATEGORIES.includes(v.category))return NextResponse.json({error:"Invalid category"},{status:400});
+   const requiredCategory=productCategoryForRole(c.role);
+   if(requiredCategory&&v.category!==requiredCategory)return NextResponse.json({error:"تەنها دەتوانیت بەرهەمەکەت لە پۆلێنی تایبەت بە جۆری دوکانەکەت دابنێیت."},{status:403});
+   patch.category=v.category;
+  }
   if("price_iqd" in v){const n=Number(v.price_iqd);if(!Number.isSafeInteger(n)||n<=0)return NextResponse.json({error:"Invalid IQD price"},{status:400});patch.price_iqd=n;}
   if("stock_quantity" in v){const n=Number(v.stock_quantity);if(!Number.isSafeInteger(n)||n<0)return NextResponse.json({error:"Invalid stock quantity"},{status:400});patch.stock_quantity=n;}
   if("is_active" in v){if(typeof v.is_active!=="boolean")return NextResponse.json({error:"Invalid active state"},{status:400});patch.is_active=v.is_active;}
