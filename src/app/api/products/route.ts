@@ -75,7 +75,7 @@ export async function GET(request:Request){
    for(let page=1;;page++){
     const {data:authUsers,error:usersError}=await c.db.auth.admin.listUsers({page,perPage:200});
     if(usersError)throw usersError;
-    adminIds.push(...authUsers.users.filter(u=>["super_admin","admin"].includes(String(u.app_metadata?.role??""))).map(u=>u.id));
+    adminIds.push(...authUsers.users.filter(u=>u.app_metadata?.role==="super_admin").map(u=>u.id));
     if(authUsers.users.length<200)break;
    }
    let legacy:LegacyProduct[]=[];
