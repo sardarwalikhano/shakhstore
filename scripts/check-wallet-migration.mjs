@@ -59,7 +59,7 @@ const serviceZoneMigration = readFileSync(resolve(process.cwd(), "supabase/migra
 const orderApi = readFileSync(resolve(process.cwd(), "src/app/api/orders/route.ts"), "utf8");
 const adminStoresPage = readFileSync(resolve(process.cwd(), "src/app/dashboard/admin/stores/page.tsx"), "utf8");
 const adminStoresApi = readFileSync(resolve(process.cwd(), "src/app/api/admin/stores/route.ts"), "utf8");
-const serviceZoneIntegration = readFileSync(resolve(process.cwd(), "scripts/test-service-zone-migration.sql"), "utf8");
+const serviceZoneIntegration = readFileSync(resolve(process.cwd(), "scripts/test-order-service-zone-migration.sql"), "utf8");
 
 
 
