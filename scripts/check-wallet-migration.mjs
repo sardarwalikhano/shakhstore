@@ -52,7 +52,8 @@ const captainDeliveriesApiSource = readFileSync(resolve(process.cwd(), "src/app/
 const productCategories = readFileSync(resolve(process.cwd(), "src/lib/product-categories.ts"), "utf8");
 const productsApi = readFileSync(resolve(process.cwd(), "src/app/api/products/route.ts"), "utf8");
 const productByIdApi = readFileSync(resolve(process.cwd(), "src/app/api/products/[id]/route.ts"), "utf8");
-const productsPage = readFileSync(resolve(process.cwd(), "src/app/dashboard/products/page.tsx"), "utf8");
+const productsPage = readFileSync(resolve(process.cwd(), "src/components/products-manager.tsx"), "utf8");
+const shakhMarketPage = readFileSync(resolve(process.cwd(), "src/app/dashboard/admin/shakh-market/page.tsx"), "utf8");
 const marketPage = readFileSync(resolve(process.cwd(), "src/app/market/page.tsx"), "utf8");
 const serviceZone = readFileSync(resolve(process.cwd(), "src/lib/service-zone.ts"), "utf8");
 const serviceZoneMigration = readFileSync(resolve(process.cwd(), "supabase/migrations/20261114071730_store_service_zones_and_checkout_phone.sql"), "utf8");
@@ -231,6 +232,14 @@ const checks = [
 
 
 
+  ["Shakh Store market page is restricted to super_admin", shakhMarketPage.includes('requireDashboardUser(["super_admin"])') && shakhMarketPage.includes("<ProductsManager platformMarket />")],
+  ["Super Admin dashboard links to its private Shakh Store market", dashboardPage.includes('href:"/dashboard/admin/shakh-market"') && dashboardPage.includes("بازاڕی تایبەتی شاخ ستۆر")],
+  ["platform market product listing is restricted to the signed-in super_admin and null-store products", productsApi.includes('searchParams.get("scope")==="platform"') && productsApi.includes('q=q.is("store_id",null).eq("owner_id",c.user.id)')],
+  ["platform market product creation is super_admin-only and does not attach a merchant store", productsApi.includes("platformMarket=v.platform_market===true") && productsApi.includes('platformMarket&&c.role!=="super_admin"') && productsApi.includes("else if(isAdmin&&platformMarket){\n   storeId=null;")],
+  ["platform market updates verify owner and null store scope", productByIdApi.includes("current.owner_id!==c.user.id||current.store_id!==null") && productByIdApi.includes('updateQuery.eq("owner_id",c.user.id).is("store_id",null)')],
+  ["platform market deletion is scoped to the owning super_admin", productByIdApi.includes('q=q.eq("owner_id",c.user.id).is("store_id",null)')],
+  ["platform market UI uses its isolated product scope and omits store selection", productsPage.includes('"/api/products?scope=platform"') && productsPage.includes("platform_market:platformMarket") && productsPage.includes("isAdmin&&!platformMarket")],
+  ["public catalog paginates admin users before loading SHAKH STORE platform posts", productsApi.includes("for(let page=1;;page++)") && productsApi.includes("authUsers.users.length<200")],
   ["cashout management link is shown only in the super-admin card group", dashboardPage.includes('...(role==="super_admin"?[{title:"بەڕێوەبردنی Cashout"') && !dashboardPage.includes('...(admin?[{title:"بەڕێوەبردنی Cashout"')],
 ];
 
