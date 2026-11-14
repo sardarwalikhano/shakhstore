@@ -19,9 +19,11 @@ async function context(){
  return {user,role:String(user.app_metadata?.role??"customer"),db:createClient(url,service,{auth:{autoRefreshToken:false,persistSession:false}})};
 }
 function validImage(value:unknown){if(value==null||value==="")return null;if(typeof value!=="string"||value.length>2048)return undefined;try{const u=new URL(value);return u.protocol==="https:"?u.toString():undefined;}catch{return undefined;}}
-export async function GET(){
+export async function GET(request:Request){
  try{
   const c=await context();if("response" in c)return c.response;
+  const platformScope=new URL(request.url).searchParams.get("scope")==="platform";
+  if(platformScope&&c.role!=="super_admin")return NextResponse.json({error:"Super Admin access required"},{status:403});
   if(c.role==="customer"){
    const {data,error}=await c.db.from("products")
     .select("id,store_id,owner_id,name,description,category,price_iqd,image_url,stock_quantity,created_at,stores!inner(id,name,slug,store_type,status,service_center_lat,service_center_lng,service_radius_km)")
@@ -108,6 +110,7 @@ export async function GET(){
    if(roleCategory)q=q.eq("category",roleCategory);
   }
   else if(c.role!=="super_admin"&&c.role!=="admin")return NextResponse.json({error:"Access denied"},{status:403});
+  if(platformScope)q=q.is("store_id",null).eq("owner_id",c.user.id);
   const {data,error}=await q;if(error)throw error;
   return NextResponse.json({
    products:data??[],
@@ -129,6 +132,8 @@ export async function POST(request:Request){
   const price=Number(v.price_iqd),stock=Number(v.stock_quantity??0);
   if(name.length<2||name.length>160)return NextResponse.json({error:"ناوی بەرهەم دەبێت لە ٢ تا ١٦٠ پیت بێت."},{status:400});
   if(!CATEGORIES.includes(category as typeof CATEGORIES[number]))return NextResponse.json({error:"پۆلێنی بەرهەم دروست نییە."},{status:400});
+  const platformMarket=v.platform_market===true;
+  if(platformMarket&&c.role!=="super_admin")return NextResponse.json({error:"Super Admin access required"},{status:403});
   const requiredMerchantCategory=productCategoryForRole(c.role);
   if(requiredMerchantCategory&&category!==requiredMerchantCategory){
    return NextResponse.json({error:"تۆ تەنها دەتوانیت لە پۆلێنی تایبەت بە جۆری دوکانەکەت بەرهەم زیاد بکەیت."},{status:403});
@@ -140,6 +145,8 @@ export async function POST(request:Request){
   if(isMerchant){
    const {data:store,error}=await c.db.from("stores").select("id").eq("owner_id",c.user.id).eq("status","approved").maybeSingle();
    if(error)throw error;if(!store)return NextResponse.json({error:"دوکانەکەت هێشتا پەسەند نەکراوە."},{status:403});storeId=store.id;
+  }else if(isAdmin&&platformMarket){
+   storeId=null;
   }else if(isAdmin){
    if(typeof v.store_id!=="string"||!/^[0-9a-f-]{36}$/i.test(v.store_id))return NextResponse.json({error:"تکایە دوکانێکی پەسەندکراو هەڵبژێرە."},{status:400});
    const {data:store,error}=await c.db.from("stores").select("id").eq("id",v.store_id).eq("status","approved").maybeSingle();
