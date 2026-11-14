@@ -54,6 +54,7 @@ export async function GET() {
         .from("captain_commissions")
         .select("commission_iqd,status")
         .eq("captain_id", user.id)
+        .order("id", { ascending: true })
         .range(offset, offset + pageSize - 1);
       if (totalsError) throw totalsError;
       for (const row of totalsPage ?? []) {
